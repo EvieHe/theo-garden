@@ -38,12 +38,21 @@ function render(){
     const images=entries.flatMap(x=>Array.isArray(x.images)?x.images:[]);
     if(entries.length){
       const a=document.createElement('a');a.className=`day has-memory${images.length?'':' text-memory'}`;a.href=`./day.html?date=${viewYear}-${String(viewMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;a.style.setProperty('--i',d);a.setAttribute('aria-label',`Open ${monthName} ${d}`);
-      a.innerHTML=images.length?`<img src="${assetUrl(images[0])}" alt=""><span class="num">${d}</span>`:`<span class="note-mark" aria-hidden="true"></span><span class="num">${d}</span>`;
+      a.innerHTML=images.length?`<img src="${assetUrl(images[0])}" alt=""><span class="num">${d}</span>`:`<span class="text-date">${d}</span>`;
       a.addEventListener('click',event=>transitionToDay(event,a));host.append(a);
     }else{const el=document.createElement('span');el.className='day';el.style.setProperty('--i',d);el.textContent=d;host.append(el)}
   }
 }
-function transitionToDay(event,a){if(reduced)return;event.preventDefault();const r=a.getBoundingClientRect();const clone=a.cloneNode(true);Object.assign(clone.style,{position:'fixed',left:`${r.left}px`,top:`${r.top}px`,width:`${r.width}px`,height:`${r.height}px`,margin:'0',zIndex:'99',transition:'all .72s cubic-bezier(.22,.82,.24,1)',pointerEvents:'none'});document.body.append(clone);requestAnimationFrame(()=>Object.assign(clone.style,{left:'19vw',top:'12vh',width:'62vw',height:'76vh',borderRadius:'46% 46% 4px 4px',opacity:'.96'}));setTimeout(()=>location.href=a.href,570)}
+function transitionToDay(event,a){
+  if(reduced)return;
+  event.preventDefault();
+  if(a.classList.contains('text-memory')){
+    a.animate([{opacity:1,transform:'scale(1)'},{opacity:.35,transform:'scale(.92)'}],{duration:260,easing:'cubic-bezier(.22,.82,.24,1)',fill:'forwards'});
+    document.querySelector('.calendar')?.animate([{opacity:1},{opacity:.86}],{duration:260,fill:'forwards'});
+    setTimeout(()=>location.href=a.href,220);
+    return;
+  }
+  const r=a.getBoundingClientRect();const clone=a.cloneNode(true);Object.assign(clone.style,{position:'fixed',left:`${r.left}px`,top:`${r.top}px`,width:`${r.width}px`,height:`${r.height}px`,margin:'0',zIndex:'99',transition:'all .72s cubic-bezier(.22,.82,.24,1)',pointerEvents:'none'});document.body.append(clone);requestAnimationFrame(()=>Object.assign(clone.style,{left:'19vw',top:'12vh',width:'62vw',height:'76vh',borderRadius:'46% 46% 4px 4px',opacity:'.96'}));setTimeout(()=>location.href=a.href,570)}
 async function load(){
   try{const res=await fetch('/api/v1/notes',{cache:'no-store'});if(res.status===401){location.replace('/?next='+encodeURIComponent(location.pathname+location.search));return}if(!res.ok)throw new Error(`notes_${res.status}`);const data=await res.json();allItems=Array.isArray(data.items)?data.items:[];
     if(!params.has('year')&&!params.has('month')){const latest=allItems.find(active);if(latest){const [y,m]=latest.day.split('-').map(Number);viewYear=y;viewMonth=m}}
