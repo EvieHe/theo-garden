@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#211914" />
+  <meta name="theme-color" content="#17110e" />
   <title>Theo Garden — Same weirdos, different worlds</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
@@ -11,18 +11,16 @@
   <main class="living-home" aria-label="Living memory garden">
     <section class="hero-scene" id="garden" aria-labelledby="gardenTitle">
       <div class="scene" aria-hidden="true">
-        <div class="scene-layer scene-layer--background"><img class="scene-image" data-scene-image alt=""></div>
-        <div class="scene-layer scene-layer--left"><img class="scene-image" data-scene-image alt=""></div>
-        <div class="scene-layer scene-layer--right"><img class="scene-image" data-scene-image alt=""></div>
-        <div class="scene-rain"></div>
-        <div class="scene-glow scene-glow--lamp"></div>
-        <div class="scene-glow scene-glow--street"></div>
-        <div class="scene-vignette"></div>
-        <div class="scene-grain"></div>
+        <img class="scene__ambient" data-scene-image alt="">
+        <img class="scene__picture" data-scene-image alt="">
+        <div class="scene__shade"></div>
+        <div class="scene__rain"></div>
+        <div class="scene__lamp"></div>
+        <div class="scene__grain"></div>
       </div>
 
       <header class="topbar">
-        <a class="brand" href="./index.html" aria-label="Theo Garden home">
+        <a class="brand" href="./index.html">
           <strong>THEO GARDEN</strong>
           <span>Same weirdos, different worlds ♡</span>
         </a>
@@ -35,25 +33,33 @@
         <p class="manifesto">A brighter<br>softer<br>kinder us ♡</p>
       </header>
 
-      <div class="hero-copy">
+      <section class="hero-copy">
         <p class="hero-kicker">Welcome to</p>
         <h1 id="gardenTitle">THEO<br>GARDEN</h1>
         <p class="hero-sub">A little place for our memories,<br>big plans, and a kinder us.</p>
-        <div class="hero-actions">
-          <a class="enter-link" href="./diary.html">Enter our garden <span>→</span></a>
-        </div>
+        <a class="enter-link" href="./diary.html">Enter Our Garden <span>→</span></a>
+
         <div class="garden-stats" aria-label="Garden summary">
           <div><strong id="memoryCount">—</strong><span>memories</span></div>
           <div><strong id="photoCount">—</strong><span>photographs</span></div>
-          <div><strong id="ideaCount">—</strong><span>plans</span></div>
+          <div><strong id="ideaCount">—</strong><span>unfinished plans</span></div>
         </div>
+      </section>
+
+      <a class="paper-note paper-note--left" href="../dates/">
+        <span>Good Girls<br>Bad Ideas ♡</span>
+      </a>
+      <a class="paper-note paper-note--bottom" href="./diary.html">
+        <span>Partners<br>In Crime ♡</span>
+      </a>
+      <div class="paper-note paper-note--right" aria-hidden="true">
+        <span>Still growing… ♡</span>
       </div>
 
-      <a class="scene-link scene-link--diary" href="./diary.html"><span>Diary</span><small>our memories</small></a>
-      <a class="scene-link scene-link--ideas" href="../dates/"><span>Good ideas</span><small>things to do</small></a>
-      <a class="scene-link scene-link--notes" href="../notes/"><span>Notes</span><small>little words</small></a>
-
-      <div class="scroll-cue" aria-hidden="true"><span></span><small>SCROLL</small></div>
+      <div class="scroll-cue" aria-hidden="true">
+        <span class="scroll-cue__mouse">↓</span>
+        <small>SCROLL</small>
+      </div>
     </section>
 
     <section class="afterglow" id="recentMemory">
