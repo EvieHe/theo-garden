@@ -21,3 +21,11 @@ export function isValidNotesIndex(doc) {
 export function isValidDateIdeas(doc) {
   return Array.isArray(doc) && doc.every(item => item && typeof item === 'object' && typeof item.id === 'string' && typeof item.title === 'string');
 }
+
+
+export function filterNotesByMonth(items, month) {
+  if (month == null || month === '') return Array.isArray(items) ? items : [];
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(month))) return null;
+  const prefix = `${month}-`;
+  return (Array.isArray(items) ? items : []).filter(item => item && typeof item.day === 'string' && item.day.startsWith(prefix));
+}
