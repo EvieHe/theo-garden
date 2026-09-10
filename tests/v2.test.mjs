@@ -38,3 +38,34 @@ test('Diary timeline uses stable notes/assets APIs and directional navigation', 
   assert.match(js, /Recorded/);
   assert.doesNotMatch(js, /api\.github\.com/);
 });
+
+test('Diary incrementally renders months and lazy-loads media', async () => {
+  const js = await read('v2/diary.js');
+  assert.match(js, /notes\?month=/);
+  assert.match(js, /month-append-sentinel/);
+  assert.match(js, /IntersectionObserver/);
+  assert.match(js, /data-src=/);
+  assert.match(js, /appendNextMonth/);
+  assert.doesNotMatch(js, /for\s*\(let i=0;i<12;i\+\+\)/);
+  assert.doesNotMatch(js, /pointermove[\s\S]{0,500}querySelectorAll\('\.memory-shot'\)/);
+});
+
+test('Diary preserves detail navigation and recorded-time fallback', async () => {
+  const diary = await read('v2/diary.js');
+  const day = await read('v2/day.js');
+  assert.match(diary, /day\.html\?date=/);
+  assert.match(diary, /Recorded ·/);
+  assert.match(day, /pickLayout/);
+  assert.match(day, /n===0/);
+  assert.match(day, /n===1/);
+  assert.match(day, /n===2/);
+  assert.match(day, /n===3/);
+  assert.match(day, /n<=6/);
+});
+
+test('Legacy Notes API remains backward compatible while V2 can filter by month', async () => {
+  const worker = await read('src/worker.js');
+  assert.match(worker, /searchParams\.get\('month'\)/);
+  assert.match(worker, /month: month \|\| null/);
+  assert.match(worker, /fetch\('\/api\/v1\/notes'/);
+});
