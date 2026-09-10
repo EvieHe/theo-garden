@@ -4,9 +4,6 @@
   "main": "src/worker.js",
   "compatibility_date": "2026-09-10",
   "keep_vars": true,
-  "secrets": {
-    "required": ["SITE_PASS", "SESSION_SECRET", "GITHUB_TOKEN"]
-  },
   "assets": {
     "directory": "./",
     "binding": "ASSETS",
