@@ -1,132 +1,75 @@
 import { getSession, getNotes, getDateIdeas } from './api.js';
 
-const RELATIONSHIP_START = new Date('2024-01-01T00:00:00+08:00');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = (id) => document.getElementById(id);
 
-function daysBetween(a, b) {
-  return Math.max(0, Math.floor((b.getTime() - a.getTime()) / 86400000));
+async function loadSceneImage() {
+  const paths = ['./assets/home-rain.part1.txt','./assets/home-rain.part2.txt','./assets/home-rain.part3.txt'];
+  const parts = await Promise.all(paths.map(async path => {
+    const res = await fetch(path, { cache: 'force-cache' });
+    if (!res.ok) throw new Error('scene_asset_' + res.status);
+    return res.text();
+  }));
+  const src = 'data:image/webp;base64,' + parts.join('');
+  document.querySelectorAll('[data-scene-image]').forEach(img => { img.src = src; });
 }
 
-function formatToday() {
-  try {
-    return new Intl.DateTimeFormat('en', { month: 'short', day: '2-digit', year: 'numeric' })
-      .format(new Date())
-      .toUpperCase();
-  } catch {
-    return 'TODAY';
-  }
-}
-
-function safeText(value, fallback = 'A day worth keeping') {
-  const text = String(value ?? '').replace(/\s+/g, ' ').trim();
-  return text || fallback;
-}
-
-function noteToMemory(note, index) {
-  const day = safeText(note?.day, 'A quiet day');
-  const title = safeText(note?.title || note?.text || note?.content, 'An ordinary day');
-  return {
-    id: note?.id || `${day}-${index}`,
-    day,
-    title: title.length > 38 ? `${title.slice(0, 38)}…` : title,
-    body: safeText(note?.text || note?.content || title),
+function bindSceneMotion() {
+  if (reduce) return;
+  const scene = document.querySelector('.scene');
+  if (!scene) return;
+  let tx = 0, ty = 0, cx = 0, cy = 0;
+  const frame = () => {
+    cx += (tx - cx) * .055;
+    cy += (ty - cy) * .055;
+    scene.style.setProperty('--bg-x', (cx * -5).toFixed(2) + 'px');
+    scene.style.setProperty('--bg-y', (cy * -3).toFixed(2) + 'px');
+    scene.style.setProperty('--left-x', (cx * 7).toFixed(2) + 'px');
+    scene.style.setProperty('--left-y', (cy * 4).toFixed(2) + 'px');
+    scene.style.setProperty('--right-x', (cx * 10).toFixed(2) + 'px');
+    scene.style.setProperty('--right-y', (cy * 5).toFixed(2) + 'px');
+    requestAnimationFrame(frame);
   };
+  addEventListener('pointermove', event => {
+    tx = (event.clientX / innerWidth - .5) * 2;
+    ty = (event.clientY / innerHeight - .5) * 2;
+  }, { passive: true });
+  addEventListener('pointerleave', () => { tx = 0; ty = 0; });
+  frame();
 }
 
-function openMemory(memory) {
-  $('memoryDialogTitle').textContent = memory.title;
-  $('memoryDialogBody').textContent = memory.body;
-  $('memoryDialogBackdrop').hidden = false;
-}
-
-function renderMemoryCards(memories) {
-  const list = $('memoryList');
-  list.replaceChildren();
-  if (!memories.length) {
-    const empty = document.createElement('div');
-    empty.className = 'memory-placeholder';
-    empty.textContent = '旧日子还在，只是今天先安静地待在档案里。';
-    list.append(empty);
-    return;
-  }
-
-  memories.slice(0, 6).forEach((memory) => {
-    const card = document.createElement('button');
-    card.type = 'button';
-    card.className = 'memory-card';
-    card.innerHTML = `<small>${escapeHtml(memory.day)}</small><h3>${escapeHtml(memory.title)}</h3><p>Open this memory →</p>`;
-    card.addEventListener('click', () => openMemory(memory));
-    list.append(card);
-  });
-}
-
-function renderMemoryNodes(memories) {
-  const host = $('memoryNodes');
-  host.replaceChildren();
-  const positions = [
-    ['25%', '41%'],
-    ['67%', '34%'],
-    ['17%', '64%'],
-    ['73%', '61%'],
-  ];
-
-  memories.slice(0, 4).forEach((memory, index) => {
-    const node = document.createElement('button');
-    node.type = 'button';
-    node.className = 'memory-node';
-    node.style.left = positions[index][0];
-    node.style.top = positions[index][1];
-    node.innerHTML = `<span class="memory-node__dot"></span><span class="memory-node__card"><span class="memory-node__date">${escapeHtml(memory.day)}</span><span class="memory-node__title">${escapeHtml(memory.title)}</span></span>`;
-    node.addEventListener('click', () => openMemory(memory));
-    host.append(node);
-  });
-}
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>'"]/g, (char) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-  })[char]);
+function activeNotes(notes) {
+  return notes.filter(note => note && note.day && !note.deletedAt);
 }
 
 async function bootstrap() {
-  $('daysTogether').textContent = daysBetween(RELATIONSHIP_START, new Date());
-  $('todayText').textContent = formatToday();
-
   const session = await getSession();
   if (!session?.ok) {
-    const next = `${location.pathname}${location.search}${location.hash}`;
-    location.replace(`/?next=${encodeURIComponent(next)}`);
+    const next = location.pathname + location.search + location.hash;
+    location.replace('/?next=' + encodeURIComponent(next));
     return;
   }
 
-  const [notesResult, datesResult] = await Promise.allSettled([getNotes(), getDateIdeas()]);
-  const notes = notesResult.status === 'fulfilled' ? notesResult.value : [];
-  const dates = datesResult.status === 'fulfilled' ? datesResult.value : [];
-  const memories = notes.map(noteToMemory);
+  loadSceneImage().catch(error => console.warn('scene image failed', error));
+  bindSceneMotion();
 
-  $('noteCount').textContent = String(notes.length);
-  $('dateCount').textContent = String(dates.length);
-  $('growthText').textContent = memories.length
-    ? `${Math.min(memories.length, 7)} leaves are holding recent memories.`
-    : 'The garden is waking up.';
+  const [notesResult, ideasResult] = await Promise.allSettled([getNotes(), getDateIdeas()]);
+  const notes = activeNotes(notesResult.status === 'fulfilled' ? notesResult.value : []);
+  const ideas = ideasResult.status === 'fulfilled' ? ideasResult.value : [];
+  const photoCount = notes.reduce((sum, note) => sum + (Array.isArray(note.images) ? note.images.length : 0), 0);
 
-  renderMemoryNodes(memories);
-  renderMemoryCards(memories);
+  $('memoryCount').textContent = String(notes.length);
+  $('photoCount').textContent = String(photoCount);
+  $('ideaCount').textContent = String(ideas.length);
+
+  const latest = notes[0];
+  if (latest) {
+    $('recentDate').textContent = latest.day.replaceAll('-', ' · ');
+    $('recentText').textContent = String(latest.text || '这一天留下了一点东西。').trim() || '这一天留下了一点东西。';
+  }
 }
 
-$('dialogClose').addEventListener('click', () => { $('memoryDialogBackdrop').hidden = true; });
-$('memoryDialogBackdrop').addEventListener('click', (event) => {
-  if (event.target === $('memoryDialogBackdrop')) $('memoryDialogBackdrop').hidden = true;
-});
-$('memorySearch').addEventListener('click', () => {
-  document.querySelector('#memories')?.scrollIntoView({ behavior: 'smooth' });
-});
-
-document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') $('memoryDialogBackdrop').hidden = true;
-});
-
-bootstrap().catch(() => {
-  $('growthText').textContent = 'The garden is resting for a moment.';
-  renderMemoryCards([]);
+bootstrap().catch(error => {
+  console.error(error);
+  $('recentText').textContent = 'The garden is resting for a moment.';
 });
