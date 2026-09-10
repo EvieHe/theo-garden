@@ -91,6 +91,43 @@ function handleHealth(env) {
   });
 }
 
+async function handleGitHubDiagnostic(env, session) {
+  if (!session) return json({ ok: false, error: 'unauthorized' }, 401);
+  if (!env.GITHUB_TOKEN) return json({ ok: false, error: 'github_token_not_configured' }, 503);
+
+  const target = 'https://api.github.com/repos/EvieHe/theo-notes/contents/notes/index.json?ref=main';
+  const response = await fetch(target, {
+    headers: {
+      authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      accept: 'application/vnd.github+json',
+      'x-github-api-version': '2022-11-28',
+      'user-agent': 'theo-garden-worker',
+    },
+  });
+
+  const result = { ok: response.ok, status: response.status, canReadNotesIndex: response.ok };
+  if (!response.ok) {
+    let detail = '';
+    try {
+      const body = await response.json();
+      detail = String(body?.message || '');
+    } catch {}
+    return json({ ...result, detail: detail.slice(0, 120) }, 200);
+  }
+
+  try {
+    const file = await response.json();
+    const raw = atob(String(file?.content || '').replace(/\n/g, ''));
+    const bytes = Uint8Array.from(raw, c => c.charCodeAt(0));
+    const doc = JSON.parse(new TextDecoder().decode(bytes));
+    result.itemCount = Array.isArray(doc?.items) ? doc.items.length : 0;
+    result.latestDay = Array.isArray(doc?.items) && doc.items[0]?.day ? String(doc.items[0].day) : null;
+  } catch {
+    result.parseOk = false;
+  }
+  return json(result);
+}
+
 async function proxyGitHub(request, env, session) {
   if (!session) return json({ error: 'unauthorized' }, 401);
   if (!env.GITHUB_TOKEN) return json({ error: 'github_token_not_configured' }, 503);
@@ -105,6 +142,7 @@ async function proxyGitHub(request, env, session) {
   headers.set('authorization', `Bearer ${env.GITHUB_TOKEN}`);
   headers.set('accept', request.headers.get('accept') || 'application/vnd.github+json');
   headers.set('x-github-api-version', '2022-11-28');
+  headers.set('user-agent', 'theo-garden-worker');
   const contentType = request.headers.get('content-type');
   if (contentType) headers.set('content-type', contentType);
 
@@ -171,6 +209,7 @@ export default {
     if (url.pathname === '/api/logout' && request.method === 'POST') return handleLogout();
 
     const session = await readSession(request, env.SESSION_SECRET);
+    if (url.pathname === '/api/diagnostics/github' && request.method === 'GET') return handleGitHubDiagnostic(env, session);
     if (url.pathname.startsWith('/api/github/')) return proxyGitHub(request, env, session);
 
     if (url.pathname === '/theo-garden' || url.pathname.startsWith('/theo-garden/')) {
