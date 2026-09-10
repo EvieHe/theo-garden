@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rewriteGitHubPath, isProtectedPath, isSafeTestPath, isValidNotesIndex, isValidDateIdeas, filterNotesByMonth } from '../src/core.js';
+import { rewriteGitHubPath, isProtectedPath, isSafeTestPath, isValidNotesIndex, isValidDateIdeas, resolveNotesIndexPath } from '../src/core.js';
 
 test('legacy and current data repo paths are rewritten to EvieHe/theo-notes', () => {
   assert.equal(rewriteGitHubPath('/repos/xcuicui/theo-notes/contents/notes/index.json'), '/repos/EvieHe/theo-notes/contents/notes/index.json');
@@ -33,14 +33,9 @@ test('date ideas contract catches schema regressions', () => {
   assert.equal(isValidDateIdeas([{ title: 'Walk' }]), false);
 });
 
-test('notes month filter is optional, strict, and preserves historical compatibility', () => {
-  const items = [
-    { day: '2026-09-01', text: 'September' },
-    { day: '2026-08-31', text: 'August' },
-    { day: '2025-09-01', text: 'Older September' },
-  ];
-  assert.deepEqual(filterNotesByMonth(items, null), items);
-  assert.deepEqual(filterNotesByMonth(items, '2026-09'), [items[0]]);
-  assert.equal(filterNotesByMonth(items, '2026-9'), null);
-  assert.equal(filterNotesByMonth(items, '2026-13'), null);
+test('notes index resolver keeps legacy aggregate and supports day storage', () => {
+  assert.deepEqual(resolveNotesIndexPath(null), { path: 'notes/index.json', day: null });
+  assert.deepEqual(resolveNotesIndexPath('2026-03-09'), { path: 'notes/2026-03-09/entries.json', day: '2026-03-09' });
+  assert.equal(resolveNotesIndexPath('2026-03'), null);
+  assert.equal(resolveNotesIndexPath('../index.json'), null);
 });
