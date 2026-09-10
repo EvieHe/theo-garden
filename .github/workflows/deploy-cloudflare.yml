@@ -45,13 +45,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BASE_URL: https://theo-garden.jzk9cnnxn2.workers.dev
-      SMOKE_SITE_PASS: ${{ secrets.SMOKE_SITE_PASS }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Verify smoke secret exists
-        run: test -n "$SMOKE_SITE_PASS"
       - name: Run production P0 smoke test
         run: npm run smoke
