@@ -86,7 +86,7 @@
       const p = new URLSearchParams(location.search);
       const next = p.get('next');
       if (next && next.startsWith('/') && !next.startsWith('//')) return next;
-      return '/greeting/';
+      return '/world/';
     }
 
     async function restoreSession(){
@@ -133,8 +133,6 @@
         try {
           localStorage.setItem('theo_auth_ok', '1');
           localStorage.setItem('theo_auth_user', user);
-          // Legacy pages still look for this key during the migration, but the
-          // Worker replaces browser-side token decryption with a safe placeholder.
           localStorage.setItem('theo_site_pass', 'cloudflare-proxy');
           localStorage.setItem('theo_notes_write_key', 'cloudflare-proxy');
         } catch {}
