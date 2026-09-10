@@ -1,4 +1,4 @@
-import { rewriteGitHubPath, isProtectedPath, isSafeTestPath, isValidNotesIndex, isValidDateIdeas, filterNotesByMonth } from './core.js';
+import { rewriteGitHubPath, isProtectedPath, isSafeTestPath, isValidNotesIndex, isValidDateIdeas, resolveNotesIndexPath } from './core.js';
 
 const USERS = new Set(['Theo', 'Evie']);
 const SESSION_COOKIE = 'theo_session';
@@ -140,13 +140,19 @@ async function ghDeleteFile(env, repoPath) {
 }
 async function apiNotes(request, env, session) {
   if (!session) return json({ error: 'unauthorized' }, 401);
-  const result = await ghJsonFile(env, 'notes/index.json');
-  if (!result.ok) return json({ error: 'storage_read_failed', upstreamStatus: result.status }, 502);
+  const index = new URL(request.url).searchParams.get('index');
+  const target = resolveNotesIndexPath(index);
+  if (!target) return json({ error: 'invalid_index', expected: 'YYYY-MM-DD' }, 400);
+  const result = await ghJsonFile(env, target.path);
+  if (!result.ok) {
+    if (target.day && result.status === 404) return json({ ok: true, items: [], index: target.day });
+    return json({ error: 'storage_read_failed', upstreamStatus: result.status }, 502);
+  }
   if (!isValidNotesIndex(result.value)) return json({ error: 'notes_contract_invalid' }, 502);
-  const month = new URL(request.url).searchParams.get('month');
-  const items = filterNotesByMonth(result.value.items, month);
-  if (items === null) return json({ error: 'invalid_month', expected: 'YYYY-MM' }, 400);
-  return json({ ok: true, items, month: month || null });
+  const items = target.day
+    ? result.value.items.map(item => ({ ...item, day: item.day || target.day }))
+    : result.value.items;
+  return json({ ok: true, items, index: target.day });
 }
 async function apiDateIdeas(env, session) {
   if (!session) return json({ error: 'unauthorized' }, 401);
