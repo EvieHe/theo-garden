@@ -3,101 +3,85 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#dfe6da" />
+  <meta name="theme-color" content="#182018" />
   <title>Theo Garden — Growing Together</title>
+  <link rel="preconnect" href="https://images.unsplash.com" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <div class="ambient" aria-hidden="true">
-    <div class="ambient__orb ambient__orb--one"></div>
-    <div class="ambient__orb ambient__orb--two"></div>
-    <div class="ambient__grain"></div>
+  <div class="world" aria-hidden="true">
+    <div class="world__photo"></div>
+    <div class="world__veil"></div>
+    <div class="world__light"></div>
+    <div class="world__grain"></div>
   </div>
 
-  <main class="app-shell">
-    <aside class="glass glass--nav side-nav" aria-label="Theo Garden navigation">
-      <div class="brand">
-        <span class="brand__mark" aria-hidden="true">◌</span>
-        <div>
-          <div class="brand__name">Theo Garden</div>
-          <div class="brand__tagline">A quiet place for our stories.</div>
-        </div>
+  <main class="experience-shell">
+    <header class="brand-lockup">
+      <div class="brand-mark" aria-hidden="true">⌁</div>
+      <div>
+        <div class="brand-name">THEO GARDEN</div>
+        <div class="brand-subtitle">Growing together</div>
       </div>
+    </header>
 
+    <div class="relationship-meta glass glass--quiet">
+      <div class="sun-mark" aria-hidden="true">☼</div>
+      <div><strong><span id="daysTogether">—</span> days together</strong><small>Since Jan 1, 2024</small></div>
+    </div>
+
+    <aside class="side-nav glass" aria-label="Theo Garden navigation">
       <nav class="nav-list">
-        <a class="nav-item is-active" href="#garden"><span>Garden</span><span>01</span></a>
-        <a class="nav-item" href="#memories"><span>Memories</span><span id="noteCount">—</span></a>
-        <a class="nav-item" href="../notes/"><span>Letters</span><span>↗</span></a>
-        <a class="nav-item" href="../dates/"><span>Things to do</span><span id="dateCount">—</span></a>
-        <button class="nav-item nav-item--muted" type="button" disabled><span>Time capsules</span><span>Soon</span></button>
+        <a class="nav-item is-active" href="#garden"><span class="nav-icon">⌂</span><span>Home</span></a>
+        <a class="nav-item" href="#memories"><span class="nav-icon">♧</span><span>Memories</span><em id="noteCount">—</em></a>
+        <a class="nav-item" href="../notes/"><span class="nav-icon">□</span><span>Letters</span></a>
+        <a class="nav-item" href="../dates/"><span class="nav-icon">♡</span><span>Our List</span><em id="dateCount">—</em></a>
+        <button class="nav-item nav-item--muted" type="button" disabled><span class="nav-icon">⌛</span><span>Time Capsules</span></button>
       </nav>
-
-      <div class="quiet-card">
-        <div class="quiet-card__eyebrow">OUR LITTLE RULE</div>
-        <p>Collect ordinary days.</p>
-      </div>
-
-      <div class="couple-meta">
-        <div class="avatars" aria-hidden="true"><span>T</span><span>E</span></div>
-        <div><strong>Theo ♡ Evie</strong><small id="sinceText">Growing, one day at a time.</small></div>
-      </div>
+      <div class="nav-divider"></div>
+      <p class="nav-manifesto">A quiet place<br/>for our story<br/>to keep growing.</p>
     </aside>
 
     <section class="garden-stage" id="garden" aria-labelledby="gardenTitle">
-      <header class="topbar">
-        <button class="search-pill glass" id="memorySearch" type="button" aria-label="Find a memory">
-          <span class="search-icon">⌕</span><span>Find a memory...</span>
-        </button>
-        <button class="round-button glass" type="button" aria-label="Add memory" disabled>＋</button>
-      </header>
-
       <div class="hero-copy">
         <p class="eyebrow">SAME PEOPLE, NEW STORIES.</p>
-        <h1 id="gardenTitle">Growing Together</h1>
+        <h1 id="gardenTitle">Growing<br/><em>Together</em></h1>
         <p class="hero-copy__cn">和你一起，把日子过成一座花园。</p>
-        <div class="days-together"><span id="daysTogether">—</span><span>days together</span></div>
       </div>
 
-      <div class="garden-scene" aria-label="Living memory garden">
-        <div class="halo" aria-hidden="true"></div>
-        <div class="stone" aria-hidden="true"></div>
-        <div class="plant" id="plant" aria-hidden="true">
-          <span class="stem stem--main"></span>
-          <span class="stem stem--left"></span>
-          <span class="stem stem--right"></span>
-          <span class="leaf leaf--1"></span>
-          <span class="leaf leaf--2"></span>
-          <span class="leaf leaf--3"></span>
-          <span class="leaf leaf--4"></span>
-          <span class="leaf leaf--5"></span>
-          <span class="leaf leaf--6"></span>
-          <span class="leaf leaf--7"></span>
-        </div>
-        <div class="memory-nodes" id="memoryNodes" aria-live="polite"></div>
-        <div class="reflection" aria-hidden="true"></div>
-      </div>
+      <div class="memory-nodes" id="memoryNodes" aria-live="polite"></div>
 
-      <div class="scroll-cue" aria-hidden="true"><span></span>SCROLL TO EXPLORE</div>
+      <button class="memory-search glass" id="memorySearch" type="button">
+        <span class="search-icon">⌕</span>
+        <span>Find a memory...</span>
+        <span class="search-growth">⌁ &nbsp; Let’s keep growing &nbsp; →</span>
+      </button>
     </section>
 
-    <aside class="glass quote-panel">
+    <aside class="quote-panel glass">
       <p class="quote-panel__date" id="todayText">TODAY</p>
-      <h2>Today is a good day.</h2>
-      <p class="quote-panel__en">Same people, new stories.</p>
-      <p class="quote-panel__cn">因为有你，平凡的日子也会发光。</p>
-      <div class="quote-panel__divider"></div>
-      <div class="growth-line"><span class="growth-dot"></span><span id="growthText">The garden is waking up.</span></div>
+      <h2>Same sky,<br/>a kinder us.</h2>
+      <div class="quote-rule"></div>
+      <p class="quote-panel__en">Different places.<br/>Same home.</p>
+      <p class="quote-panel__cn">那些看起来普通的日子，<br/>后来都会变成很想念的日子。</p>
+      <div class="growth-line"><span></span><span id="growthText">The garden is waking up.</span></div>
     </aside>
 
+    <div class="scroll-cue"><span></span>SCROLL TO EXPLORE</div>
+
     <section class="memory-strip" id="memories" aria-labelledby="memoriesTitle">
-      <div>
+      <div class="memory-strip__intro">
         <p class="eyebrow">A SMALL ARCHIVE OF US</p>
-        <h2 id="memoriesTitle">Recent memories</h2>
+        <h2 id="memoriesTitle">Things worth<br/>remembering.</h2>
+        <p>不是为了把每一天都记录下来，<br/>只是舍不得让一些日子消失。</p>
       </div>
       <div class="memory-list" id="memoryList"><div class="memory-placeholder">正在把旧日子长回花园里…</div></div>
     </section>
 
-    <footer class="footer-note">Good people, good days.</footer>
+    <footer class="footer-note">
+      <span>Good people, good days.</span>
+      <small>Landscape photograph via Unsplash · Oskar Kadaksoo</small>
+    </footer>
   </main>
 
   <div class="memory-dialog-backdrop" id="memoryDialogBackdrop" hidden>
