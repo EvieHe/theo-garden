@@ -80,6 +80,17 @@ function handleLogout() {
   });
 }
 
+function handleHealth(env) {
+  return json({
+    ok: true,
+    configured: {
+      sitePass: Boolean(env.SITE_PASS),
+      sessionSecret: Boolean(env.SESSION_SECRET),
+      githubToken: Boolean(env.GITHUB_TOKEN),
+    },
+  });
+}
+
 async function proxyGitHub(request, env, session) {
   if (!session) return json({ error: 'unauthorized' }, 401);
   if (!env.GITHUB_TOKEN) return json({ error: 'github_token_not_configured' }, 503);
@@ -137,9 +148,6 @@ function legacyBridgeScript(user) {
 }
 
 function transformLegacyHtml(html, user) {
-  // The old pages decrypt a browser-side PAT before calling GitHub. During the
-  // Cloudflare migration we replace only that function at the edge. This keeps
-  // the large legacy pages stable while the real PAT stays server-side.
   html = html.replace(
     /async function decryptToken\(pass\)\{[\s\S]*?return new TextDecoder\('utf-8'\)\.decode\(new Uint8Array\(pt\)\);\s*\}/g,
     "async function decryptToken(pass){ return 'cloudflare-proxy-placeholder-token'; }"
@@ -157,6 +165,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    if (url.pathname === '/api/health' && request.method === 'GET') return handleHealth(env);
     if (url.pathname === '/api/login' && request.method === 'POST') return handleLogin(request, env);
     if (url.pathname === '/api/session' && request.method === 'GET') return handleSession(request, env);
     if (url.pathname === '/api/logout' && request.method === 'POST') return handleLogout();
