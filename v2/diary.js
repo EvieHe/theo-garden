@@ -21,11 +21,14 @@ function groupedForMonth(){
 }
 function render(){
   const grouped=groupedForMonth();
+  const monthName=monthNames[viewMonth-1];
   document.querySelector('.month-intro>p:first-child').textContent=`${String(viewMonth).padStart(2,'0')} / ${viewYear}`;
-  document.querySelector('.month-intro h1').textContent=monthNames[viewMonth-1];
+  const monthTitle=document.querySelector('.month-intro h1');
+  monthTitle.textContent=monthName;
+  monthTitle.dataset.longMonth=String(monthName.length>=8);
   document.querySelector('.month-line small').textContent=`${String(grouped.size).padStart(2,'0')} memories kept this month`;
   document.querySelector('.year').textContent=viewYear;
-  document.querySelector('.bottom-glass span').textContent=`${monthNames[viewMonth-1]} · ${viewYear}`;
+  document.querySelector('.bottom-glass span').textContent=`${monthName} · ${viewYear}`;
   host.innerHTML='';
   const first=new Date(viewYear,viewMonth-1,1).getDay();
   const count=new Date(viewYear,viewMonth,0).getDate();
@@ -33,15 +36,13 @@ function render(){
   for(let d=1;d<=count;d++){
     const entries=grouped.get(d)||[];
     const images=entries.flatMap(x=>Array.isArray(x.images)?x.images:[]);
-    const text=entries.map(x=>x.text||'').find(Boolean)||'';
     if(entries.length){
-      const a=document.createElement('a');a.className=`day has-memory${images.length?'':' text-memory'}`;a.href=`./day.html?date=${viewYear}-${String(viewMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;a.style.setProperty('--i',d);a.setAttribute('aria-label',`Open ${monthNames[viewMonth-1]} ${d}`);
-      a.innerHTML=images.length?`<img src="${assetUrl(images[0])}" alt=""><span class="num">${d}</span>`:`<span class="text-peek">${escapeHtml(text.slice(0,18)||'A small note')}</span><span class="num">${d}</span>`;
+      const a=document.createElement('a');a.className=`day has-memory${images.length?'':' text-memory'}`;a.href=`./day.html?date=${viewYear}-${String(viewMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;a.style.setProperty('--i',d);a.setAttribute('aria-label',`Open ${monthName} ${d}`);
+      a.innerHTML=images.length?`<img src="${assetUrl(images[0])}" alt=""><span class="num">${d}</span>`:`<span class="note-mark" aria-hidden="true"></span><span class="num">${d}</span>`;
       a.addEventListener('click',event=>transitionToDay(event,a));host.append(a);
     }else{const el=document.createElement('span');el.className='day';el.style.setProperty('--i',d);el.textContent=d;host.append(el)}
   }
 }
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function transitionToDay(event,a){if(reduced)return;event.preventDefault();const r=a.getBoundingClientRect();const clone=a.cloneNode(true);Object.assign(clone.style,{position:'fixed',left:`${r.left}px`,top:`${r.top}px`,width:`${r.width}px`,height:`${r.height}px`,margin:'0',zIndex:'99',transition:'all .72s cubic-bezier(.22,.82,.24,1)',pointerEvents:'none'});document.body.append(clone);requestAnimationFrame(()=>Object.assign(clone.style,{left:'19vw',top:'12vh',width:'62vw',height:'76vh',borderRadius:'46% 46% 4px 4px',opacity:'.96'}));setTimeout(()=>location.href=a.href,570)}
 async function load(){
   try{const res=await fetch('/api/v1/notes',{cache:'no-store'});if(res.status===401){location.replace('/?next='+encodeURIComponent(location.pathname+location.search));return}if(!res.ok)throw new Error(`notes_${res.status}`);const data=await res.json();allItems=Array.isArray(data.items)?data.items:[];
