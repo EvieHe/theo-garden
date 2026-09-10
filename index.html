@@ -39,7 +39,7 @@
       border-radius:16px;
       border:1px solid rgba(31,102,227,0.16);
       padding:11px 12px;
-      font-size:16px; /* avoid iOS Safari zoom on focus */
+      font-size:16px;
       outline:none;
       background:rgba(255,255,255,0.92);
     }
@@ -54,6 +54,7 @@
       color:#fff;
       font-weight:900;
     }
+    button:disabled{ opacity:.6; cursor:not-allowed; }
     .err{ margin-top:10px; font-size:13px; color:#b0003a; display:none; }
   </style>
 </head>
@@ -69,7 +70,7 @@
     </select>
 
     <label>口令</label>
-    <input id="pass" type="password" inputmode="numeric" placeholder="4 位数" />
+    <input id="pass" type="password" inputmode="numeric" placeholder="4 位数" autocomplete="current-password" />
 
     <div class="err" id="err">用户名或口令不对哦～</div>
 
@@ -80,33 +81,28 @@
 
   <script>
     const USERS = new Set(['Theo','Evie']);
-    const EXPECT_PASS = '0124';
-
-    function basePath(){
-      // '/theo-garden' (repo pages base)
-      const parts = location.pathname.split('/').filter(Boolean);
-      return parts.length ? `/${parts[0]}` : '';
-    }
 
     function nextUrl(){
       const p = new URLSearchParams(location.search);
       const next = p.get('next');
-      const base = basePath();
-      if (next && next.startsWith('/')) return base + next;
-      return base + '/greeting/';
+      if (next && next.startsWith('/') && !next.startsWith('//')) return next;
+      return '/greeting/';
     }
 
-    function alreadyOk(){
+    async function restoreSession(){
       try {
-        const ok = localStorage.getItem('theo_auth_ok') === '1';
-        const user = localStorage.getItem('theo_auth_user') || '';
-        if (ok && USERS.has(user)) return true;
+        const res = await fetch('/api/session', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data?.ok || !USERS.has(data.user)) return;
+        try {
+          localStorage.setItem('theo_auth_ok', '1');
+          localStorage.setItem('theo_auth_user', data.user);
+          localStorage.setItem('theo_site_pass', 'cloudflare-proxy');
+          localStorage.setItem('theo_notes_write_key', 'cloudflare-proxy');
+        } catch {}
+        location.replace(nextUrl());
       } catch {}
-      return false;
-    }
-
-    if (alreadyOk()) {
-      location.replace(nextUrl());
     }
 
     const $ = (id) => document.getElementById(id);
@@ -115,25 +111,45 @@
     const userEl = $('user');
     const passEl = $('pass');
 
-    const submit = () => {
+    const submit = async () => {
       err.style.display = 'none';
       const user = String(userEl.value || '').trim();
       const pass = String(passEl.value || '').trim();
-      if (!USERS.has(user) || pass !== EXPECT_PASS) {
+      if (!USERS.has(user) || !pass) {
         err.style.display = 'block';
         return;
       }
+      btn.disabled = true;
       try {
-        localStorage.setItem('theo_auth_ok', '1');
-        localStorage.setItem('theo_auth_user', user);
-        // also store pass so /notes and /simple can decrypt token without re-asking.
-        localStorage.setItem('theo_site_pass', pass);
-      } catch {}
-      location.replace(nextUrl());
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ user, pass }),
+        });
+        if (!res.ok) {
+          err.style.display = 'block';
+          return;
+        }
+        try {
+          localStorage.setItem('theo_auth_ok', '1');
+          localStorage.setItem('theo_auth_user', user);
+          // Legacy pages still look for this key during the migration, but the
+          // Worker replaces browser-side token decryption with a safe placeholder.
+          localStorage.setItem('theo_site_pass', 'cloudflare-proxy');
+          localStorage.setItem('theo_notes_write_key', 'cloudflare-proxy');
+        } catch {}
+        location.replace(nextUrl());
+      } catch {
+        err.textContent = '暂时连不上秘密基地，请稍后再试～';
+        err.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+      }
     };
 
     btn.onclick = submit;
     passEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+    restoreSession();
   </script>
 </body>
 </html>
