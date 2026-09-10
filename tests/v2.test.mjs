@@ -142,3 +142,15 @@ test('Home V2 is a living scene with restrained motion and real navigation', asy
   assert.match(js, /pointermove/);
   assert.doesNotMatch(html, /memory-card/);
 });
+
+test('Home hero keeps demo composition with smaller scene and right-side editorial copy', async () => {
+  const html = await read('v2/index.html');
+  const css = await read('v2/styles.css');
+  assert.match(html, /scene__picture/);
+  assert.match(html, /Welcome to/);
+  assert.match(html, /Enter Our Garden/);
+  assert.match(html, /garden-stats/);
+  assert.match(css, /width:min\(69vw,1060px\)/);
+  assert.match(css, /right:5\.8vw/);
+  assert.doesNotMatch(html, /scene-layer--left|scene-layer--right/);
+});
