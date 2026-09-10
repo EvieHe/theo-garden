@@ -148,10 +148,11 @@ async function apiNotes(request, env, session) {
     if (target.day && result.status === 404) return json({ ok: true, items: [], index: target.day });
     return json({ error: 'storage_read_failed', upstreamStatus: result.status }, 502);
   }
-  if (!isValidNotesIndex(result.value)) return json({ error: 'notes_contract_invalid' }, 502);
+  if (!result.value || typeof result.value !== 'object' || !Array.isArray(result.value.items)) return json({ error: 'notes_contract_invalid' }, 502);
   const items = target.day
-    ? result.value.items.map(item => ({ ...item, day: item.day || target.day }))
+    ? result.value.items.map(item => ({ ...item, day: item?.day || target.day }))
     : result.value.items;
+  if (!isValidNotesIndex({ items })) return json({ error: 'notes_contract_invalid' }, 502);
   return json({ ok: true, items, index: target.day });
 }
 async function apiDateIdeas(env, session) {
