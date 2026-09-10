@@ -41,7 +41,7 @@ test('Diary timeline uses stable notes/assets APIs and directional navigation', 
 
 test('Diary incrementally renders months and lazy-loads media', async () => {
   const js = await read('v2/diary.js');
-  assert.match(js, /notes\?month=/);
+  assert.match(js, /notes\\?index=/);
   assert.match(js, /month-append-sentinel/);
   assert.match(js, /IntersectionObserver/);
   assert.match(js, /data-src=/);
@@ -63,9 +63,13 @@ test('Diary preserves detail navigation and recorded-time fallback', async () =>
   assert.match(day, /n<=6/);
 });
 
-test('Legacy Notes API remains backward compatible while V2 can filter by month', async () => {
+test('Legacy Notes API remains backward compatible while V2 can read a day index', async () => {
   const worker = await read('src/worker.js');
-  assert.match(worker, /searchParams\.get\('month'\)/);
-  assert.match(worker, /month: month \|\| null/);
-  assert.match(worker, /fetch\('\/api\/v1\/notes'/);
+  const diary = await read('v2/diary.js');
+  const day = await read('v2/day.js');
+  assert.match(worker, /searchParams\.get\('index'\)/);
+  assert.match(worker, /notes\/\$\{value\}\/entries\.json/);
+  assert.match(diary, /\/api\/v1\/notes\?index=/);
+  assert.match(day, /\/api\/v1\/notes\?index=/);
+  assert.match(worker, /path: 'notes\/index\.json'/);
 });
