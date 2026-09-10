@@ -8,5 +8,15 @@ for(let d=1;d<=30;d++){
     host.append(a)
   }else{const el=document.createElement('span');el.className='day';el.style.setProperty('--i',d);el.textContent=d;host.append(el)}
 }
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const light=document.querySelector('.pointer-light');
-if(light&&!matchMedia('(prefers-reduced-motion: reduce)').matches){window.addEventListener('pointermove',e=>{light.style.left=`${e.clientX}px`;light.style.top=`${e.clientY}px`;document.querySelector('.diary-world__image')?.style.setProperty('transform',`scale(1.08) translate3d(${(e.clientX/innerWidth-.5)*-1.4}%,${(e.clientY/innerHeight-.5)*-1.1}%,0)`)},{passive:true})}
+const world=document.querySelector('.diary-world__image');
+const moon=document.querySelector('.diary-world__moon');
+const calendar=document.querySelector('.calendar');
+if(!reduced){
+  let tx=0,ty=0,cx=0,cy=0;
+  const animate=()=>{cx+=(tx-cx)*.055;cy+=(ty-cy)*.055;if(light){light.style.left=`${innerWidth*(.5+cx)}px`;light.style.top=`${innerHeight*(.5+cy)}px`}if(world)world.style.transform=`scale(1.09) translate3d(${cx*-2.4}%,${cy*-1.8}%,0)`;if(moon)moon.style.translate=`${cx*-18}px ${cy*-12}px`;if(calendar)calendar.style.transform=`translateY(10px) rotateX(${cy*-1.8}deg) rotateY(${cx*2.1}deg)`;requestAnimationFrame(animate)};
+  window.addEventListener('pointermove',e=>{tx=e.clientX/innerWidth-.5;ty=e.clientY/innerHeight-.5},{passive:true});
+  window.addEventListener('pointerleave',()=>{tx=0;ty=0});
+  animate();
+}
