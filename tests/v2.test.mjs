@@ -123,3 +123,22 @@ test('P0 legacy aggregate notes endpoint remains unchanged for historical consum
   assert.match(core, /path: 'notes\/index\.json'/);
   assert.match(worker, /stable Notes API: load the complete historical index/);
 });
+
+test('Home V2 is a living scene with restrained motion and real navigation', async () => {
+  const html = await read('v2/index.html');
+  const css = await read('v2/styles.css');
+  const js = await read('v2/app.js');
+  assert.match(html, /Living memory garden/);
+  assert.match(html, /scene-layer--left/);
+  assert.match(html, /scene-layer--right/);
+  assert.match(html, /\.\/diary\.html/);
+  assert.match(html, /\.\.\/dates\//);
+  assert.match(html, /\.\.\/notes\//);
+  assert.match(css, /prefers-reduced-motion/);
+  assert.match(css, /clip-path/);
+  assert.match(css, /rainFall/);
+  assert.match(js, /getNotes/);
+  assert.match(js, /getDateIdeas/);
+  assert.match(js, /pointermove/);
+  assert.doesNotMatch(html, /memory-card/);
+});
