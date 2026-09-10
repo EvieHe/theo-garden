@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#dfe6da" />
+  <title>Theo Garden — Growing Together</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="ambient" aria-hidden="true">
+    <div class="ambient__orb ambient__orb--one"></div>
+    <div class="ambient__orb ambient__orb--two"></div>
+    <div class="ambient__grain"></div>
+  </div>
+
+  <main class="app-shell">
+    <aside class="glass glass--nav side-nav" aria-label="Theo Garden navigation">
+      <div class="brand">
+        <span class="brand__mark" aria-hidden="true">◌</span>
+        <div>
+          <div class="brand__name">Theo Garden</div>
+          <div class="brand__tagline">A quiet place for our stories.</div>
+        </div>
+      </div>
+
+      <nav class="nav-list">
+        <a class="nav-item is-active" href="#garden"><span>Garden</span><span>01</span></a>
+        <a class="nav-item" href="#memories"><span>Memories</span><span id="noteCount">—</span></a>
+        <a class="nav-item" href="../notes/"><span>Letters</span><span>↗</span></a>
+        <a class="nav-item" href="../dates/"><span>Things to do</span><span id="dateCount">—</span></a>
+        <button class="nav-item nav-item--muted" type="button" disabled><span>Time capsules</span><span>Soon</span></button>
+      </nav>
+
+      <div class="quiet-card">
+        <div class="quiet-card__eyebrow">OUR LITTLE RULE</div>
+        <p>Collect ordinary days.</p>
+      </div>
+
+      <div class="couple-meta">
+        <div class="avatars" aria-hidden="true"><span>T</span><span>E</span></div>
+        <div><strong>Theo ♡ Evie</strong><small id="sinceText">Growing, one day at a time.</small></div>
+      </div>
+    </aside>
+
+    <section class="garden-stage" id="garden" aria-labelledby="gardenTitle">
+      <header class="topbar">
+        <button class="search-pill glass" id="memorySearch" type="button" aria-label="Find a memory">
+          <span class="search-icon">⌕</span><span>Find a memory...</span>
+        </button>
+        <button class="round-button glass" type="button" aria-label="Add memory" disabled>＋</button>
+      </header>
+
+      <div class="hero-copy">
+        <p class="eyebrow">SAME PEOPLE, NEW STORIES.</p>
+        <h1 id="gardenTitle">Growing Together</h1>
+        <p class="hero-copy__cn">和你一起，把日子过成一座花园。</p>
+        <div class="days-together"><span id="daysTogether">—</span><span>days together</span></div>
+      </div>
+
+      <div class="garden-scene" aria-label="Living memory garden">
+        <div class="halo" aria-hidden="true"></div>
+        <div class="stone" aria-hidden="true"></div>
+        <div class="plant" id="plant" aria-hidden="true">
+          <span class="stem stem--main"></span>
+          <span class="stem stem--left"></span>
+          <span class="stem stem--right"></span>
+          <span class="leaf leaf--1"></span>
+          <span class="leaf leaf--2"></span>
+          <span class="leaf leaf--3"></span>
+          <span class="leaf leaf--4"></span>
+          <span class="leaf leaf--5"></span>
+          <span class="leaf leaf--6"></span>
+          <span class="leaf leaf--7"></span>
+        </div>
+        <div class="memory-nodes" id="memoryNodes" aria-live="polite"></div>
+        <div class="reflection" aria-hidden="true"></div>
+      </div>
+
+      <div class="scroll-cue" aria-hidden="true"><span></span>SCROLL TO EXPLORE</div>
+    </section>
+
+    <aside class="glass quote-panel">
+      <p class="quote-panel__date" id="todayText">TODAY</p>
+      <h2>Today is a good day.</h2>
+      <p class="quote-panel__en">Same people, new stories.</p>
+      <p class="quote-panel__cn">因为有你，平凡的日子也会发光。</p>
+      <div class="quote-panel__divider"></div>
+      <div class="growth-line"><span class="growth-dot"></span><span id="growthText">The garden is waking up.</span></div>
+    </aside>
+
+    <section class="memory-strip" id="memories" aria-labelledby="memoriesTitle">
+      <div>
+        <p class="eyebrow">A SMALL ARCHIVE OF US</p>
+        <h2 id="memoriesTitle">Recent memories</h2>
+      </div>
+      <div class="memory-list" id="memoryList"><div class="memory-placeholder">正在把旧日子长回花园里…</div></div>
+    </section>
+
+    <footer class="footer-note">Good people, good days.</footer>
+  </main>
+
+  <div class="memory-dialog-backdrop" id="memoryDialogBackdrop" hidden>
+    <section class="glass memory-dialog" role="dialog" aria-modal="true" aria-labelledby="memoryDialogTitle">
+      <button class="dialog-close" id="dialogClose" type="button" aria-label="Close">×</button>
+      <p class="eyebrow">MEMORY</p>
+      <h2 id="memoryDialogTitle">A day worth keeping</h2>
+      <p id="memoryDialogBody"></p>
+      <a class="dialog-link" href="../notes/">Open the full archive →</a>
+    </section>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
