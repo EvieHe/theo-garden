@@ -41,7 +41,7 @@ test('Diary timeline uses stable notes/assets APIs and directional navigation', 
 
 test('Diary incrementally renders months and lazy-loads media', async () => {
   const js = await read('v2/diary.js');
-  assert.match(js, /notes\\?index=/);
+  assert.match(js, /notes\?index=/);
   assert.match(js, /month-append-sentinel/);
   assert.match(js, /IntersectionObserver/);
   assert.match(js, /data-src=/);
