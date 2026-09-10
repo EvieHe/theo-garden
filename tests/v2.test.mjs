@@ -73,3 +73,51 @@ test('Legacy Notes API remains backward compatible while V2 can read a day index
   assert.match(day, /\/api\/v1\/notes\?index=/);
   assert.match(worker, /path: 'notes\/index\.json'/);
 });
+
+
+test('P0 diary first paint renders one month shell before incremental append', async () => {
+  const js = await read('v2/diary.js');
+  assert.match(js, /timeline\.replaceChildren\(section\)/);
+  assert.match(js, /const section=makeMonthSection\(viewYear,viewMonth\)/);
+  assert.doesNotMatch(js, /for\s*\([^)]*12[^)]*\)/);
+});
+
+test('P0 diary vertical continuation appends exactly the next month', async () => {
+  const js = await read('v2/diary.js');
+  assert.match(js, /appendObserver/);
+  assert.match(js, /appendNextMonth\(section\)/);
+  assert.match(js, /timeline\.append\(next\)/);
+  assert.match(js, /addMonth\(y,m,1\)/);
+});
+
+test('P0 diary horizontal navigation targets one month and preserves deep-link state', async () => {
+  const js = await read('v2/diary.js');
+  assert.match(js, /shiftMonth\(delta\)/);
+  assert.match(js, /renderTimeline\(delta\)/);
+  assert.match(js, /history\.replaceState/);
+  assert.match(js, /deltaX/);
+});
+
+test('P0 real note rendering keeps text, images, authors and deleted history semantics', async () => {
+  const diary = await read('v2/diary.js');
+  assert.match(diary, /entry\.text/);
+  assert.match(diary, /entry\.images/);
+  assert.match(diary, /entry\.author/);
+  assert.match(diary, /!item\.deletedAt/);
+  assert.match(diary, /fetchDay/);
+});
+
+test('P0 day detail reads its daily index and keeps content-driven layout engine', async () => {
+  const day = await read('v2/day.js');
+  assert.match(day, /index=\$\{encodeURIComponent\(requested\)\}/);
+  assert.match(day, /pickLayout\(images\.length\)/);
+  assert.match(day, /editorial/);
+  assert.match(day, /essay/);
+});
+
+test('P0 legacy aggregate notes endpoint remains unchanged for historical consumers', async () => {
+  const worker = await read('src/worker.js');
+  assert.match(worker, /resolveNotesIndexPath\(index\)/);
+  assert.match(worker, /path: 'notes\/index\.json'/);
+  assert.match(worker, /stable Notes API: load the complete historical index/);
+});
