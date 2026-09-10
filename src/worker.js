@@ -82,18 +82,36 @@ async function ghJsonFile(env, repoPath) {
   const file = await res.json();
   const raw = atob(String(file.content || '').replace(/\n/g, ''));
   const bytes = Uint8Array.from(raw, c => c.charCodeAt(0));
-  return { ok: true, status: 200, sha: file.sha, value: JSON.parse(new TextDecoder().decode(bytes)) };
+  try {
+    return { ok: true, status: 200, sha: file.sha, value: JSON.parse(new TextDecoder().decode(bytes)) };
+  } catch {
+    return { ok: false, status: 502, error: 'invalid_json' };
+  }
+}
+async function apiReady(env) {
+  const configured = Boolean(env.SITE_PASS && env.SESSION_SECRET && env.GITHUB_TOKEN);
+  if (!configured) return json({ ok: false, configured: false }, 503);
+  const [notes, dates] = await Promise.all([ghJsonFile(env, 'notes/index.json'), ghJsonFile(env, 'dates/ideas.json')]);
+  const notesOk = notes.ok && isValidNotesIndex(notes.value) && notes.value.items.length > 0;
+  const datesOk = dates.ok && isValidDateIdeas(dates.value) && dates.value.length > 0;
+  return json({
+    ok: notesOk && datesOk,
+    configured: true,
+    storage: {
+      notes: { ok: notesOk, count: notes.ok && Array.isArray(notes.value?.items) ? notes.value.items.length : 0, upstreamStatus: notes.status },
+      dateIdeas: { ok: datesOk, count: dates.ok && Array.isArray(dates.value) ? dates.value.length : 0, upstreamStatus: dates.status },
+    },
+  }, notesOk && datesOk ? 200 : 503);
 }
 async function ghPutJson(env, repoPath, value) {
   const current = await ghJsonFile(env, repoPath);
-  const content = b64urlBytes(new TextEncoder().encode(JSON.stringify(value, null, 2)));
+  const content = bytesToBase64(new TextEncoder().encode(JSON.stringify(value, null, 2)));
   const path = `/repos/EvieHe/theo-notes/contents/${repoPath.split('/').map(encodeURIComponent).join('/')}`;
   const payload = { message: `Smoke test ${repoPath}`, content, branch: 'main' };
   if (current.ok && current.sha) payload.sha = current.sha;
-  const res = await ghRequest(env, path, { method: 'PUT', contentType: 'application/json', body: JSON.stringify(payload) });
-  return res;
+  return ghRequest(env, path, { method: 'PUT', contentType: 'application/json', body: JSON.stringify(payload) });
 }
-function b64urlBytes(bytes) {
+function bytesToBase64(bytes) {
   let binary = '';
   for (const b of bytes) binary += String.fromCharCode(b);
   return btoa(binary);
@@ -178,6 +196,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/api/health' && request.method === 'GET') return handleHealth(env);
+    if (url.pathname === '/api/ready' && request.method === 'GET') return apiReady(env);
     if (url.pathname === '/api/login' && request.method === 'POST') return handleLogin(request, env);
     if (url.pathname === '/api/session' && request.method === 'GET') return handleSession(request, env);
     if (url.pathname === '/api/logout' && request.method === 'POST') return handleLogout();
