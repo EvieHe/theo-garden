@@ -88,20 +88,36 @@ async function ghJsonFile(env, repoPath) {
     return { ok: false, status: 502, error: 'invalid_json' };
   }
 }
+async function notesUiReady(env) {
+  try {
+    const res = await env.ASSETS.fetch(new Request('https://assets.local/notes/'));
+    if (!res.ok) return false;
+    const transformed = transformLegacyHtml(await res.text(), 'Evie');
+    return transformed.includes("fetch('/api/v1/notes'") && transformed.includes('stable Notes API');
+  } catch {
+    return false;
+  }
+}
 async function apiReady(env) {
   const configured = Boolean(env.SITE_PASS && env.SESSION_SECRET && env.GITHUB_TOKEN);
   if (!configured) return json({ ok: false, configured: false }, 503);
-  const [notes, dates] = await Promise.all([ghJsonFile(env, 'notes/index.json'), ghJsonFile(env, 'dates/ideas.json')]);
+  const [notes, dates, notesUiOk] = await Promise.all([
+    ghJsonFile(env, 'notes/index.json'),
+    ghJsonFile(env, 'dates/ideas.json'),
+    notesUiReady(env),
+  ]);
   const notesOk = notes.ok && isValidNotesIndex(notes.value) && notes.value.items.length > 0;
   const datesOk = dates.ok && isValidDateIdeas(dates.value) && dates.value.length > 0;
+  const ok = notesOk && datesOk && notesUiOk;
   return json({
-    ok: notesOk && datesOk,
+    ok,
     configured: true,
     storage: {
       notes: { ok: notesOk, count: notes.ok && Array.isArray(notes.value?.items) ? notes.value.items.length : 0, upstreamStatus: notes.status },
       dateIdeas: { ok: datesOk, count: dates.ok && Array.isArray(dates.value) ? dates.value.length : 0, upstreamStatus: dates.status },
     },
-  }, notesOk && datesOk ? 200 : 503);
+    ui: { notes: { ok: notesUiOk } },
+  }, ok ? 200 : 503);
 }
 async function ghPutJson(env, repoPath, value) {
   const current = await ghJsonFile(env, repoPath);
@@ -186,9 +202,44 @@ async function proxyGitHub(request, env, session) {
 function legacyBridgeScript(user) {
   return `<script>(()=>{try{localStorage.setItem('theo_auth_ok','1');localStorage.setItem('theo_auth_user',${JSON.stringify(user)});localStorage.setItem('theo_site_pass','cloudflare-proxy');localStorage.setItem('theo_notes_write_key','cloudflare-proxy')}catch{}const nativeFetch=window.fetch.bind(window);window.fetch=async(input,init={})=>{let url;try{url=new URL(typeof input==='string'?input:input.url,location.href)}catch{return nativeFetch(input,init)}if(url.origin==='https://api.github.com'){const next='/api/github'+url.pathname+url.search;const headers=new Headers(init.headers||(typeof input!=='string'?input.headers:undefined));headers.delete('authorization');const response=await nativeFetch(next,{...init,headers});if(response.status===401){try{localStorage.removeItem('theo_auth_ok')}catch{}location.replace('/?next='+encodeURIComponent(location.pathname+location.search+location.hash))}return response}return nativeFetch(input,init)}})();</script>`;
 }
+function stableNotesRenderFunction() {
+  return `async function renderFromGitHub(){
+      // stable Notes API: load the complete historical index before rendering the calendar.
+      renderWeek();
+      const now = new Date();
+      const apiRes = await fetch('/api/v1/notes', { cache: 'no-store' });
+      if (!apiRes.ok) throw new Error('notes_api_' + apiRes.status);
+      const apiData = await apiRes.json();
+      notesIndex = { items: Array.isArray(apiData.items) ? apiData.items : [] };
+      saveIndexCache(notesIndex);
+
+      const todayStr = \`${'${now.getFullYear()}'}-${'${String(now.getMonth()+1).padStart(2,\'0\')}'}-${'${String(now.getDate()).padStart(2,\'0\')}'}\`;
+      const latest = notesIndex.items.find(it => it && it.day && !it.deletedAt);
+      selectedDay = latest && latest.day ? String(latest.day) : todayStr;
+      const selectedParts = selectedDay.split('-').map(Number);
+      viewY = selectedParts[0] || now.getFullYear();
+      viewM = selectedParts[1] || (now.getMonth() + 1);
+
+      const prevM = $('prevM');
+      const nextM = $('nextM');
+      const todayBtn = $('todayBtn');
+      const rerender = () => { renderCalendar(viewY, viewM); markSelected(selectedDay); };
+      prevM && (prevM.onclick = () => { viewM -= 1; if (viewM <= 0) { viewM = 12; viewY -= 1; } rerender(); });
+      nextM && (nextM.onclick = () => { viewM += 1; if (viewM >= 13) { viewM = 1; viewY += 1; } rerender(); });
+      todayBtn && (todayBtn.onclick = async () => {
+        viewY = now.getFullYear(); viewM = now.getMonth() + 1; selectedDay = todayStr; rerender(); await loadDay(selectedDay);
+      });
+
+      rerender();
+      await loadDay(selectedDay);
+    }`;
+}
 function transformLegacyHtml(html, user) {
   html = html.replace(/async function decryptToken\(pass\)\{[\s\S]*?return new TextDecoder\('utf-8'\)\.decode\(new Uint8Array\(pt\)\);\s*\}/g, "async function decryptToken(pass){ return 'cloudflare-proxy-placeholder-token'; }");
   html = html.replaceAll("const GH_OWNER = 'xcuicui';", "const GH_OWNER = 'EvieHe';");
+  if (html.includes('async function renderFromGitHub(){')) {
+    html = html.replace(/async function renderFromGitHub\(\)\{[\s\S]*?\n    \}\n\n    async function render\(\)\{/m, `${stableNotesRenderFunction()}\n\n    async function render(){`);
+  }
   return html.replace('<head>', `<head>${legacyBridgeScript(user)}`);
 }
 
