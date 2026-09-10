@@ -129,13 +129,13 @@ test('Home V2 is a living scene with restrained motion and real navigation', asy
   const css = await read('v2/styles.css');
   const js = await read('v2/app.js');
   assert.match(html, /Living memory garden/);
-  assert.match(html, /scene-layer--left/);
-  assert.match(html, /scene-layer--right/);
+  assert.match(html, /scene__ambient/);
+  assert.match(html, /scene__picture/);
   assert.match(html, /\.\/diary\.html/);
   assert.match(html, /\.\.\/dates\//);
   assert.match(html, /\.\.\/notes\//);
   assert.match(css, /prefers-reduced-motion/);
-  assert.match(css, /clip-path/);
+  assert.match(css, /object-fit:contain/);
   assert.match(css, /rainFall/);
   assert.match(js, /getNotes/);
   assert.match(js, /getDateIdeas/);
