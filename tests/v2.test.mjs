@@ -65,13 +65,14 @@ test('Diary preserves detail navigation and recorded-time fallback', async () =>
 
 test('Legacy Notes API remains backward compatible while V2 can read a day index', async () => {
   const worker = await read('src/worker.js');
+  const core = await read('src/core.js');
   const diary = await read('v2/diary.js');
   const day = await read('v2/day.js');
   assert.match(worker, /searchParams\.get\('index'\)/);
-  assert.match(worker, /notes\/\$\{value\}\/entries\.json/);
+  assert.match(core, /notes\/\$\{value\}\/entries\.json/);
   assert.match(diary, /\/api\/v1\/notes\?index=/);
   assert.match(day, /\/api\/v1\/notes\?index=/);
-  assert.match(worker, /path: 'notes\/index\.json'/);
+  assert.match(core, /path: 'notes\/index\.json'/);
 });
 
 
@@ -117,7 +118,8 @@ test('P0 day detail reads its daily index and keeps content-driven layout engine
 
 test('P0 legacy aggregate notes endpoint remains unchanged for historical consumers', async () => {
   const worker = await read('src/worker.js');
+  const core = await read('src/core.js');
   assert.match(worker, /resolveNotesIndexPath\(index\)/);
-  assert.match(worker, /path: 'notes\/index\.json'/);
+  assert.match(core, /path: 'notes\/index\.json'/);
   assert.match(worker, /stable Notes API: load the complete historical index/);
 });
