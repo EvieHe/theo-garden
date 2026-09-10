@@ -9,6 +9,8 @@ let appendObserver;
 let imageObserver;
 let exifObserver;
 const monthCache=new Map();
+const dayCache=new Map();
+let catalogItems=[];
 const renderedMonths=new Set();
 const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const weekdays=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -19,14 +21,32 @@ const pad=n=>String(n).padStart(2,'0');
 const key=(y,m)=>`${y}-${pad(m)}`;
 function addMonth(y,m,delta=1){m+=delta;while(m>12){m-=12;y++}while(m<1){m+=12;y--}return[y,m]}
 function groupByDay(items){const map=new Map();items.forEach(item=>{if(!map.has(item.day))map.set(item.day,[]);map.get(item.day).push(item)});return map}
+async function fetchJsonNotes(url){
+ const res=await fetch(url,{cache:'no-store'});
+ if(res.status===401){location.replace('/?next='+encodeURIComponent(location.pathname+location.search));throw new Error('unauthorized')}
+ if(!res.ok)throw new Error(`notes_${res.status}`);
+ return res.json();
+}
+async function ensureCatalog(){
+ if(catalogItems.length)return catalogItems;
+ const data=await fetchJsonNotes('/api/v1/notes');
+ catalogItems=Array.isArray(data.items)?data.items:[];
+ return catalogItems;
+}
+async function fetchDay(day){
+ if(dayCache.has(day))return dayCache.get(day);
+ const data=await fetchJsonNotes(`/api/v1/notes?index=${encodeURIComponent(day)}`);
+ const items=(Array.isArray(data.items)?data.items:[]).filter(active).map(item=>({...item,day:item.day||day})).sort((a,b)=>(a.ts||0)-(b.ts||0));
+ dayCache.set(day,items);
+ return items;
+}
 async function fetchMonth(y,m){
  const monthKey=key(y,m);
  if(monthCache.has(monthKey))return monthCache.get(monthKey);
- const res=await fetch(`/api/v1/notes?month=${monthKey}`,{cache:'no-store'});
- if(res.status===401){location.replace('/?next='+encodeURIComponent(location.pathname+location.search));throw new Error('unauthorized')}
- if(!res.ok)throw new Error(`notes_${res.status}`);
- const data=await res.json();
- const items=(Array.isArray(data.items)?data.items:[]).filter(active).sort((a,b)=>(a.ts||0)-(b.ts||0));
+ const catalog=await ensureCatalog();
+ const days=[...new Set(catalog.filter(active).map(item=>String(item.day)).filter(day=>day.startsWith(monthKey+'-')))];
+ const groups=await Promise.all(days.map(fetchDay));
+ const items=groups.flat().sort((a,b)=>(a.ts||0)-(b.ts||0));
  monthCache.set(monthKey,items);
  return items;
 }
