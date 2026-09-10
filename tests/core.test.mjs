@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rewriteGitHubPath, isProtectedPath, isSafeTestPath, isValidNotesIndex, isValidDateIdeas } from '../src/core.js';
+import { rewriteGitHubPath, isProtectedPath, isSafeTestPath, isValidNotesIndex, isValidDateIdeas, filterNotesByMonth } from '../src/core.js';
 
 test('legacy and current data repo paths are rewritten to EvieHe/theo-notes', () => {
   assert.equal(rewriteGitHubPath('/repos/xcuicui/theo-notes/contents/notes/index.json'), '/repos/EvieHe/theo-notes/contents/notes/index.json');
@@ -31,4 +31,16 @@ test('notes index contract catches schema regressions', () => {
 test('date ideas contract catches schema regressions', () => {
   assert.equal(isValidDateIdeas([{ id: 'walk', title: 'Walk' }]), true);
   assert.equal(isValidDateIdeas([{ title: 'Walk' }]), false);
+});
+
+test('notes month filter is optional, strict, and preserves historical compatibility', () => {
+  const items = [
+    { day: '2026-09-01', text: 'September' },
+    { day: '2026-08-31', text: 'August' },
+    { day: '2025-09-01', text: 'Older September' },
+  ];
+  assert.deepEqual(filterNotesByMonth(items, null), items);
+  assert.deepEqual(filterNotesByMonth(items, '2026-09'), [items[0]]);
+  assert.equal(filterNotesByMonth(items, '2026-9'), null);
+  assert.equal(filterNotesByMonth(items, '2026-13'), null);
 });
