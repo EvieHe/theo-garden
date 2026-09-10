@@ -1,10 +1,14 @@
 .git/
 .github/
+.wrangler/
 src/
+tests/
+scripts/
 node_modules/
 wrangler.jsonc
 package.json
 package-lock.json
 README.md
+CLOUDFLARE.md
 tools/
 .assetsignore
