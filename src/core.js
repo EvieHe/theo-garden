@@ -23,9 +23,9 @@ export function isValidDateIdeas(doc) {
 }
 
 
-export function filterNotesByMonth(items, month) {
-  if (month == null || month === '') return Array.isArray(items) ? items : [];
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(month))) return null;
-  const prefix = `${month}-`;
-  return (Array.isArray(items) ? items : []).filter(item => item && typeof item.day === 'string' && item.day.startsWith(prefix));
+export function resolveNotesIndexPath(index) {
+  if (index == null || index === '') return { path: 'notes/index.json', day: null };
+  const value = String(index);
+  if (!/^\d{4}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(value)) return null;
+  return { path: `notes/${value}/entries.json`, day: value };
 }
