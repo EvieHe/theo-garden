@@ -4,13 +4,7 @@ const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $=id=>document.getElementById(id);
 
 async function loadSceneImage(){
-  const paths=['./assets/home-rain.part1.txt','./assets/home-rain.part2.txt','./assets/home-rain.part3.txt'];
-  const parts=await Promise.all(paths.map(async path=>{
-    const res=await fetch(path,{cache:'force-cache'});
-    if(!res.ok)throw new Error('scene_asset_'+res.status);
-    return res.text();
-  }));
-  const src='data:image/webp;base64,'+parts.join('');
+  const src='./assets/hero-home-01_20_39.png';
   document.querySelectorAll('[data-scene-image]').forEach(img=>{img.src=src});
 }
 function bindSceneMotion(){
