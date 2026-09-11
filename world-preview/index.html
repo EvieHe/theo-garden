@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#17120f" />
+<title>Theo Garden · Preview</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#17120f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif}
+.page{position:relative;width:100%;height:100svh;overflow:hidden;background:#17120f}
+.scene{position:absolute;inset:0;width:100%;height:100%;border:0;background:#17120f}
+.shade{position:absolute;inset:0;pointer-events:none;z-index:2;background:linear-gradient(180deg,rgba(8,5,4,.04),transparent 24%,transparent 74%,rgba(8,5,4,.22))}
+.bubble{position:absolute;z-index:4;border:1px solid rgba(255,255,255,.5);background:rgba(245,237,226,.92);color:#302722;padding:10px 15px;border-radius:22px;box-shadow:0 12px 35px rgba(0,0,0,.22);backdrop-filter:blur(7px);font-size:clamp(12px,.95vw,15px);line-height:1.3;cursor:pointer;animation:float 4.2s ease-in-out infinite}
+.bubble::after{content:"";position:absolute;width:14px;height:14px;background:inherit;bottom:-6px;transform:rotate(45deg);border-right:1px solid rgba(255,255,255,.4);border-bottom:1px solid rgba(255,255,255,.4)}
+.b1{left:30%;top:23%;transform:rotate(-2deg)}.b1::after{right:25%}.b2{right:27%;top:27%;transform:rotate(1.5deg);animation-delay:-1.8s}.b2::after{left:27%}
+@keyframes float{0%,100%{margin-top:0}50%{margin-top:-5px}}
+.nav{position:absolute;z-index:5;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:5px;padding:6px;border:1px solid rgba(255,255,255,.13);background:rgba(24,19,16,.5);backdrop-filter:blur(18px);border-radius:999px;box-shadow:0 10px 32px rgba(0,0,0,.27)}
+.nav a{color:rgba(255,255,255,.82);text-decoration:none;font-size:12px;padding:9px 13px;border-radius:999px}.nav a:hover{background:rgba(255,255,255,.09);color:#fff}
+@media(max-width:760px){.b1{left:7%;top:25%}.b2{right:6%;top:36%}.nav{width:calc(100% - 28px);justify-content:space-around}.nav a{padding:9px 8px;font-size:11px}}
+@media(prefers-reduced-motion:reduce){.bubble{animation:none}}
+</style>
+</head>
+<body>
+<main class="page">
+  <iframe class="scene" src="/world/?scene=photo-v1" title="Theo Garden scene"></iframe>
+  <div class="shade"></div>
+  <button class="bubble b1" data-lines="在看什么？ ♡|今天也一起摸鱼吗？|你点我干嘛。|……好吧，陪你一会。">在看什么？ ♡</button>
+  <button class="bubble b2" data-lines="还不去写代码？ ♡|先喝咖啡。|今天也算好日子。|再点就收费了。">还不去写代码？ ♡</button>
+  <nav class="nav"><a href="/greeting/">Memories</a><a href="/dates/">Calendar</a><a href="/notes/">Notes</a><a href="/simple/">Our World</a></nav>
+</main>
+<script>
+document.querySelectorAll('.bubble').forEach(el=>{let i=0;const xs=el.dataset.lines.split('|');el.onclick=()=>{i=(i+1)%xs.length;el.textContent=xs[i]}});
+</script>
+</body>
+</html>
