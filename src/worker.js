@@ -1,4 +1,4 @@
-import { rewriteGitHubPath, isProtectedPath, isSafeTestPath, isValidNotesIndex, isValidDateIdeas } from './core.js';
+import { rewriteGitHubPath, isProtectedPath, isSafeTestPath, isValidNotesIndex, isValidDateIdeas, resolveNotesIndexPath } from './core.js';
 
 const USERS = new Set(['Theo', 'Evie']);
 const SESSION_COOKIE = 'theo_session';
@@ -138,12 +138,22 @@ async function ghDeleteFile(env, repoPath) {
   const path = `/repos/EvieHe/theo-notes/contents/${repoPath.split('/').map(encodeURIComponent).join('/')}`;
   return ghRequest(env, path, { method: 'DELETE', contentType: 'application/json', body: JSON.stringify({ message: `Cleanup smoke test ${repoPath}`, sha: current.sha, branch: 'main' }) });
 }
-async function apiNotes(env, session) {
+async function apiNotes(request, env, session) {
   if (!session) return json({ error: 'unauthorized' }, 401);
-  const result = await ghJsonFile(env, 'notes/index.json');
-  if (!result.ok) return json({ error: 'storage_read_failed', upstreamStatus: result.status }, 502);
-  if (!isValidNotesIndex(result.value)) return json({ error: 'notes_contract_invalid' }, 502);
-  return json({ ok: true, items: result.value.items });
+  const index = new URL(request.url).searchParams.get('index');
+  const target = resolveNotesIndexPath(index);
+  if (!target) return json({ error: 'invalid_index', expected: 'YYYY-MM-DD' }, 400);
+  const result = await ghJsonFile(env, target.path);
+  if (!result.ok) {
+    if (target.day && result.status === 404) return json({ ok: true, items: [], index: target.day });
+    return json({ error: 'storage_read_failed', upstreamStatus: result.status }, 502);
+  }
+  if (!result.value || typeof result.value !== 'object' || !Array.isArray(result.value.items)) return json({ error: 'notes_contract_invalid' }, 502);
+  const items = target.day
+    ? result.value.items.map(item => ({ ...item, day: item?.day || target.day }))
+    : result.value.items;
+  if (!isValidNotesIndex({ items })) return json({ error: 'notes_contract_invalid' }, 502);
+  return json({ ok: true, items, index: target.day });
 }
 async function apiDateIdeas(env, session) {
   if (!session) return json({ error: 'unauthorized' }, 401);
@@ -253,7 +263,7 @@ export default {
     if (url.pathname === '/api/logout' && request.method === 'POST') return handleLogout();
 
     const session = await readSession(request, env.SESSION_SECRET);
-    if (url.pathname === '/api/v1/notes' && request.method === 'GET') return apiNotes(env, session);
+    if (url.pathname === '/api/v1/notes' && request.method === 'GET') return apiNotes(request, env, session);
     if (url.pathname === '/api/v1/date-ideas' && request.method === 'GET') return apiDateIdeas(env, session);
     if (url.pathname === '/api/v1/assets' && request.method === 'GET') return apiAsset(request, env, session);
     if (url.pathname === '/api/v1/test-object') return apiTestObject(request, env, session);
