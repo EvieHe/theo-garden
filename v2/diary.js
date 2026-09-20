@@ -43,10 +43,8 @@ async function fetchDay(day){
 async function fetchMonth(y,m){
  const monthKey=key(y,m);
  if(monthCache.has(monthKey))return monthCache.get(monthKey);
- const catalog=await ensureCatalog();
- const days=[...new Set(catalog.filter(active).map(item=>String(item.day)).filter(day=>day.startsWith(monthKey+'-')))];
- const groups=await Promise.all(days.map(fetchDay));
- const items=groups.flat().sort((a,b)=>(a.ts||0)-(b.ts||0));
+ const data=await fetchJsonNotes(`/api/v1/notes?month=${encodeURIComponent(monthKey)}`);
+ const items=(Array.isArray(data.items)?data.items:[]).filter(active).sort((a,b)=>(a.ts||0)-(b.ts||0));
  monthCache.set(monthKey,items);
  return items;
 }
@@ -67,7 +65,11 @@ function renderCalendar(y,m,items){
 function formatRecordTime(ts){if(!ts)return'';const d=new Date(ts);return `${pad(d.getHours())}:${pad(d.getMinutes())}`}
 function renderShot(path,entry){
  const fallback=formatRecordTime(entry.ts);
- return `<figure class="memory-shot" data-path="${esc(path)}">${lazyImage(path,'Memory photograph')}<figcaption class="photo-time" data-fallback="${esc(fallback)}">Capture time pending</figcaption></figure>`;
+ const meta=(Array.isArray(entry.imageMeta)?entry.imageMeta:[]).find(item=>item&&item.path===path);
+ const captured=meta?.capturedAt?formatRecordTime(meta.capturedAt):'';
+ const label=captured?`Captured · ${captured}`:(fallback?`Recorded · ${fallback}`:'Time unavailable');
+ const skipExif=meta?'true':'false';
+ return `<figure class="memory-shot" data-path="${esc(path)}" data-skip-exif="${skipExif}">${lazyImage(path,'Memory photograph')}<figcaption class="photo-time" data-fallback="${esc(fallback)}">${esc(label)}</figcaption></figure>`;
 }
 function renderEntry(entry){
  const images=Array.isArray(entry.images)?entry.images:[];
@@ -106,6 +108,7 @@ function ensureObservers(){
  if(!exifObserver)exifObserver=new IntersectionObserver(entries=>entries.forEach(async entry=>{
   if(!entry.isIntersecting)return;
   exifObserver.unobserve(entry.target);
+  if(entry.target.dataset.skipExif==='true')return;
   const cap=entry.target.querySelector('.photo-time');
   const result=await captureTime(entry.target.dataset.path,cap?.dataset.fallback||'');
   if(cap){cap.textContent=result.label;cap.dataset.source=result.source}
