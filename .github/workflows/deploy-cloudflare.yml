@@ -41,19 +41,12 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: versions upload --preview-alias v2
 
-      - name: Verify CloudBase bridge and bootstrap migration
+      - name: Verify CloudBase bridge
         run: |
           set -euo pipefail
           BASE_URL="https://v2-theo-garden.jzk9cnnxn2.workers.dev"
-
           curl --fail --silent --show-error "$BASE_URL/api/health" -o /tmp/health.json
           jq -e '.configured.cloudbase == true' /tmp/health.json >/dev/null
-
-          MIGRATE_STATUS="$(curl --silent --show-error -o /tmp/migrate.json -w '%{http_code}' \
-            -X POST "$BASE_URL/api/admin/bootstrap-cloudbase-migration-20260920")"
-          cat /tmp/migrate.json
-          test "$MIGRATE_STATUS" = "200"
-          jq -e '.ok == true and .data.entries == 24 and .data.media == 19' /tmp/migrate.json >/dev/null
 
   deploy:
     if: github.event_name != 'pull_request'
