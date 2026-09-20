@@ -410,6 +410,14 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/api/health' && request.method === 'GET') return handleHealth(env);
+    if (url.pathname === '/api/admin/bootstrap-cloudbase-migration-20260920' && request.method === 'POST') {
+      try {
+        return json({ ok: true, data: await migrateGardenToCloudBase(env) });
+      } catch (error) {
+        console.error('Bootstrap CloudBase migration failed:', error?.message || error);
+        return json({ error: 'migration_failed', message: error?.message || 'unknown' }, 500);
+      }
+    }
     if (url.pathname === '/api/ready' && request.method === 'GET') return apiReady(env);
     if (url.pathname === '/api/login' && request.method === 'POST') return handleLogin(request, env);
     if (url.pathname === '/api/session' && request.method === 'GET') return handleSession(request, env);
