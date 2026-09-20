@@ -266,8 +266,21 @@ async function apiNotes(request, env, session) {
       const params = new URLSearchParams();
       if (index) params.set('day', index);
       if (month) params.set('month', month);
-      const result = await cloudBaseGardenRequest(env, `/v1/garden/notes${params.size ? '?' + params.toString() : ''}`);
-      return json({ ok: true, items: Array.isArray(result?.data) ? result.data : [], index: index || undefined, source: 'cloudbase' });
+      let result = await cloudBaseGardenRequest(env, `/v1/garden/notes${params.size ? '?' + params.toString() : ''}`);
+      let items = Array.isArray(result?.data) ? result.data : [];
+
+      // First authenticated read after cutover performs the one-time, idempotent
+      // GitHub -> CloudBase migration if the Garden read model is still empty.
+      if (items.length === 0) {
+        const all = await cloudBaseGardenRequest(env, '/v1/garden/notes');
+        if (Array.isArray(all?.data) && all.data.length === 0) {
+          await migrateGardenToCloudBase(env);
+          result = await cloudBaseGardenRequest(env, `/v1/garden/notes${params.size ? '?' + params.toString() : ''}`);
+          items = Array.isArray(result?.data) ? result.data : [];
+        }
+      }
+
+      return json({ ok: true, items, index: index || undefined, source: 'cloudbase' });
     } catch (error) {
       console.error('CloudBase notes read failed; falling back to GitHub:', error?.message || error);
     }
