@@ -136,7 +136,10 @@ async function ensureGardenMediaObject(env, originalPath) {
   const bytes = await source.arrayBuffer();
   const upload = await cloudBaseStorageRequest(env, originalPath, {
     method: 'POST',
-    contentType: source.headers.get('content-type') || mimeTypeForPath(originalPath),
+    // GitHub's raw endpoint often reports application/octet-stream. The
+    // CloudBase bucket intentionally allowlists image MIME types, so derive
+    // the type from the original filename instead of trusting upstream.
+    contentType: mimeTypeForPath(originalPath),
     body: bytes
   });
   if (!upload.ok) throw new Error(`garden_storage_upload_${upload.status}`);
