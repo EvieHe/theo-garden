@@ -150,7 +150,7 @@ test('Home hero keeps demo composition with smaller scene and right-side editori
   assert.match(html, /Welcome to/);
   assert.match(html, /Enter Our Garden/);
   assert.match(html, /garden-stats/);
-  assert.match(css, /width:min\(69vw,1060px\)/);
+  assert.match(css, /width:100%/);
   assert.match(css, /right:5\.8vw/);
   assert.doesNotMatch(html, /scene-layer--left|scene-layer--right/);
 });
