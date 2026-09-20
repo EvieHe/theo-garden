@@ -207,13 +207,28 @@ async function migrateGardenToCloudBase(env) {
   return { entries: entries.length, media: media.length, uploaded, reused, imported: imported?.data || null };
 }
 
-function migrationServiceAuthorized(request, env) {
+async function migrationServiceAuthorized(request, env) {
+  const actual = String(request.headers.get('x-garden-service-key') || '').trim();
+  if (!actual) return false;
+
   const expected = String(env.CLOUDBASE_API_KEY || '');
-  const actual = String(request.headers.get('x-garden-service-key') || '');
-  if (!expected || expected.length !== actual.length) return false;
-  let diff = 0;
-  for (let i = 0; i < expected.length; i += 1) diff |= expected.charCodeAt(i) ^ actual.charCodeAt(i);
-  return diff === 0;
+  if (expected && expected.length === actual.length) {
+    let diff = 0;
+    for (let i = 0; i < expected.length; i += 1) diff |= expected.charCodeAt(i) ^ actual.charCodeAt(i);
+    if (diff === 0) return true;
+  }
+
+  // The migration runner may use a different Server API Key from the same
+  // CloudBase environment. Let the Garden backend validate environment scope.
+  try {
+    const base = `https://${cloudBaseEnvId(env)}.service.tcloudbase.com/moments`;
+    const res = await fetch(`${base}/v1/garden/notes?month=1970-01`, {
+      headers: { 'x-garden-service-key': actual, accept: 'application/json' }
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 async function migrationSourceIndex(env) {
@@ -454,11 +469,11 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === '/api/health' && request.method === 'GET') return handleHealth(env);
     if (url.pathname === '/api/admin/migration-index' && request.method === 'GET') {
-      if (!migrationServiceAuthorized(request, env)) return json({ error: 'unauthorized' }, 401);
+      if (!(await migrationServiceAuthorized(request, env))) return json({ error: 'unauthorized' }, 401);
       return migrationSourceIndex(env);
     }
     if (url.pathname === '/api/admin/migration-object' && request.method === 'GET') {
-      if (!migrationServiceAuthorized(request, env)) return json({ error: 'unauthorized' }, 401);
+      if (!(await migrationServiceAuthorized(request, env))) return json({ error: 'unauthorized' }, 401);
       return migrationSourceObject(request, env);
     }
     if (url.pathname === '/api/ready' && request.method === 'GET') return apiReady(env);
