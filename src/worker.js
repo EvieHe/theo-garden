@@ -219,11 +219,14 @@ async function migrationServiceAuthorized(request, env) {
   }
 
   // The migration runner may use a different Server API Key from the same
-  // CloudBase environment. Let the Garden backend validate environment scope.
+  // CloudBase environment. Validate it directly against PostgreSQL REST so
+  // authorization does not depend on another application service hop.
   try {
-    const base = `https://${cloudBaseEnvId(env)}.service.tcloudbase.com/moments`;
-    const res = await fetch(`${base}/v1/garden/notes?month=1970-01`, {
-      headers: { 'x-garden-service-key': actual, accept: 'application/json' }
+    const url = new URL(`https://${cloudBaseEnvId(env)}.api.tcloudbasegateway.com/v1/rdb/rest/garden_entries`);
+    url.searchParams.set('select', 'id');
+    url.searchParams.set('limit', '1');
+    const res = await fetch(url, {
+      headers: { authorization: `Bearer ${actual}`, accept: 'application/json' }
     });
     return res.ok;
   } catch {
