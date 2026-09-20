@@ -142,7 +142,18 @@ async function ensureGardenMediaObject(env, originalPath) {
     contentType: mimeTypeForPath(originalPath),
     body: bytes
   });
-  if (!upload.ok) throw new Error(`garden_storage_upload_${upload.status}`);
+  if (!upload.ok) {
+    const raw = await upload.text();
+    let detail = raw.slice(0, 500);
+    try {
+      const parsed = JSON.parse(raw);
+      detail = JSON.stringify({
+        code: parsed?.code || parsed?.error?.code || null,
+        message: parsed?.message || parsed?.error?.message || null
+      });
+    } catch {}
+    throw new Error(`garden_storage_upload_${upload.status}:${detail}`);
+  }
   return { uploaded: true };
 }
 
