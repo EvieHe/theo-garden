@@ -207,6 +207,35 @@ async function migrateGardenToCloudBase(env) {
   return { entries: entries.length, media: media.length, uploaded, reused, imported: imported?.data || null };
 }
 
+function migrationServiceAuthorized(request, env) {
+  const expected = String(env.CLOUDBASE_API_KEY || '');
+  const actual = String(request.headers.get('x-garden-service-key') || '');
+  if (!expected || expected.length !== actual.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i += 1) diff |= expected.charCodeAt(i) ^ actual.charCodeAt(i);
+  return diff === 0;
+}
+
+async function migrationSourceIndex(env) {
+  const result = await ghJsonFile(env, 'notes/index.json');
+  if (!result.ok || !Array.isArray(result.value?.items)) return json({ error: 'notes_index_unavailable' }, 502);
+  return json({ ok: true, items: result.value.items });
+}
+
+async function migrationSourceObject(request, env) {
+  const path = new URL(request.url).searchParams.get('path') || '';
+  if (!/^notes\/\d{4}-\d{2}-\d{2}\/images\/[A-Za-z0-9._-]+$/.test(path)) {
+    return json({ error: 'bad_asset_path' }, 400);
+  }
+  const enc = path.split('/').map(encodeURIComponent).join('/');
+  const res = await ghRequest(env, `/repos/EvieHe/theo-notes/contents/${enc}?ref=main`, { accept: 'application/vnd.github.raw' });
+  if (!res.ok) return json({ error: 'asset_read_failed', upstreamStatus: res.status }, 502);
+  const headers = new Headers();
+  headers.set('content-type', mimeTypeForPath(path));
+  headers.set('cache-control', 'no-store');
+  return new Response(res.body, { status: 200, headers });
+}
+
 async function ghJsonFile(env, repoPath) {
   const enc = repoPath.split('/').map(encodeURIComponent).join('/');
   const res = await ghRequest(env, `/repos/EvieHe/theo-notes/contents/${enc}?ref=main`);
@@ -424,13 +453,13 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/api/health' && request.method === 'GET') return handleHealth(env);
-    if (url.pathname === '/api/admin/bootstrap-cloudbase-migration-20260920' && request.method === 'POST') {
-      try {
-        return json({ ok: true, data: await migrateGardenToCloudBase(env) });
-      } catch (error) {
-        console.error('Bootstrap CloudBase migration failed:', error?.message || error);
-        return json({ error: 'migration_failed', message: error?.message || 'unknown' }, 500);
-      }
+    if (url.pathname === '/api/admin/migration-index' && request.method === 'GET') {
+      if (!migrationServiceAuthorized(request, env)) return json({ error: 'unauthorized' }, 401);
+      return migrationSourceIndex(env);
+    }
+    if (url.pathname === '/api/admin/migration-object' && request.method === 'GET') {
+      if (!migrationServiceAuthorized(request, env)) return json({ error: 'unauthorized' }, 401);
+      return migrationSourceObject(request, env);
     }
     if (url.pathname === '/api/ready' && request.method === 'GET') return apiReady(env);
     if (url.pathname === '/api/login' && request.method === 'POST') return handleLogin(request, env);
