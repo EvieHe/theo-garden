@@ -10,13 +10,20 @@ export function sessionToken(){
 export function clearSession(){
   try{localStorage.removeItem('garden_session_token');localStorage.removeItem('garden_session_user')}catch{}
 }
+function runtimePath(path){
+  if(isCloudBase)return path;
+  if(path.startsWith('/notes'))return '/v1'+path;
+  if(path.startsWith('/date-ideas'))return '/v1'+path;
+  if(path.startsWith('/asset'))return '/v1/assets'+path.slice('/asset'.length);
+  return path;
+}
 export async function apiFetch(path,init={}){
   const headers=new Headers(init.headers||{});
   if(isCloudBase){
     const token=sessionToken();
     if(token)headers.set('authorization',`Bearer ${token}`);
   }
-  return fetch(apiBase+path,{...init,headers,credentials:isCloudBase?'omit':'same-origin'});
+  return fetch(apiBase+runtimePath(path),{...init,headers,credentials:isCloudBase?'omit':'same-origin'});
 }
 export function redirectToLogin(){
   clearSession();
