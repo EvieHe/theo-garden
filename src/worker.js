@@ -155,6 +155,9 @@ async function ensureGardenMediaObject(env, originalPath) {
     } catch {}
     lastDetail = detail;
 
+    if (upload.status === 409 && /STORAGE_KEY_ALREADY_EXISTS/.test(raw)) {
+      return { uploaded: false };
+    }
     if ([502, 503, 504, 520, 521, 522, 523, 524, 525, 526].includes(upload.status)) {
       await new Promise(resolve => setTimeout(resolve, Math.min(12000, attempt * 1800)));
       continue;
