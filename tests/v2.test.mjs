@@ -7,8 +7,8 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 test('V2 uses stable Worker APIs instead of GitHub directly', async () => {
   const api = await read('v2/api.js');
   assert.match(api, /apiFetch\('\/session'/);
-  assert.match(api, /apiFetch\('\/v1\/notes'/);
-  assert.match(api, /apiFetch\('\/v1\/date-ideas'/);
+  assert.match(api, /apiFetch\('\/notes'/);
+  assert.match(api, /apiFetch\('\/date-ideas'/);
   assert.doesNotMatch(api, /api\.github\.com/);
   assert.doesNotMatch(api, /github_pat/i);
 });
