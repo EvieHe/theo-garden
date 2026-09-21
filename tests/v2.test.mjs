@@ -70,8 +70,8 @@ test('Legacy Notes API remains backward compatible while V2 can read a day index
   const day = await read('v2/day.js');
   assert.match(worker, /searchParams\.get\('index'\)/);
   assert.match(core, /notes\/\$\{value\}\/entries\.json/);
-  assert.match(diary, /\/api\/v1\/notes\?index=/);
-  assert.match(day, /\/api\/v1\/notes\?index=/);
+  assert.match(diary, /\/notes\?index=/);
+  assert.match(day, /\/notes\?index=/);
   assert.match(core, /path: 'notes\/index\.json'/);
 });
 
