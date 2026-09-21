@@ -164,8 +164,7 @@ async function migrateGardenToCloudBase(env) {
 
   const entries = [];
   const media = [];
-  let uploaded = 0;
-  let reused = 0;
+  const tasks = [];
 
   for (const item of index.value.items) {
     const id = String(item.id || `${item.day}:${item.ts}`);
@@ -180,10 +179,9 @@ async function migrateGardenToCloudBase(env) {
       sourcePath: 'notes/index.json'
     });
     const images = Array.isArray(item.images) ? item.images : [];
-    for (let i = 0; i < images.length; i += 1) {
-      const originalPath = String(images[i]);
-      const result = await ensureGardenMediaObject(env, originalPath);
-      if (result.uploaded) uploaded += 1; else reused += 1;
+    images.forEach((rawPath, sortOrder) => {
+      const originalPath = String(rawPath);
+      tasks.push({ originalPath });
       media.push({
         id: `legacy:${originalPath}`,
         entryId: id,
@@ -191,8 +189,27 @@ async function migrateGardenToCloudBase(env) {
         originalPath,
         mimeType: mimeTypeForPath(originalPath),
         capturedAt: null,
-        sortOrder: i
+        sortOrder
       });
+    });
+  }
+
+  // Text is persisted first. If a photo transfer is interrupted, rerunning the
+  // migration resumes safely without losing already migrated diary entries.
+  await cloudBaseGardenRequest(env, '/v1/garden/import', {
+    method: 'POST',
+    body: { entries, media: [] }
+  });
+
+  let uploaded = 0;
+  let reused = 0;
+  for (let i = 0; i < tasks.length; i += 4) {
+    const results = await Promise.all(
+      tasks.slice(i, i + 4).map(task => ensureGardenMediaObject(env, task.originalPath))
+    );
+    for (const result of results) {
+      if (result.uploaded) uploaded += 1;
+      else reused += 1;
     }
   }
 
@@ -202,8 +219,12 @@ async function migrateGardenToCloudBase(env) {
   });
   const verify = await cloudBaseGardenRequest(env, '/v1/garden/notes');
   const actualEntries = Array.isArray(verify?.data) ? verify.data.length : 0;
-  const actualMedia = Array.isArray(verify?.data) ? verify.data.reduce((sum, item) => sum + (Array.isArray(item.images) ? item.images.length : 0), 0) : 0;
-  if (actualEntries !== entries.length || actualMedia !== media.length) throw new Error(`migration_count_mismatch:${actualEntries}/${actualMedia}`);
+  const actualMedia = Array.isArray(verify?.data)
+    ? verify.data.reduce((sum, item) => sum + (Array.isArray(item.images) ? item.images.length : 0), 0)
+    : 0;
+  if (actualEntries !== entries.length || actualMedia !== media.length) {
+    throw new Error(`migration_count_mismatch:${actualEntries}/${actualMedia}`);
+  }
   return { entries: entries.length, media: media.length, uploaded, reused, imported: imported?.data || null };
 }
 
