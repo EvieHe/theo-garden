@@ -1,3 +1,4 @@
+import {apiFetch,redirectToLogin,hydrateSignedUrls,isCloudBase} from './runtime.js';
 const timeline=document.querySelector('#diaryTimeline');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const params=new URLSearchParams(location.search);
@@ -14,7 +15,8 @@ let catalogItems=[];
 const renderedMonths=new Set();
 const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const weekdays=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-const assetUrl=path=>`/api/v1/assets?path=${encodeURIComponent(path)}`;
+const signedUrlByPath=new Map();
+const assetUrl=path=>signedUrlByPath.get(path)||(isCloudBase?'':`/api/v1/assets?path=${encodeURIComponent(path)}`);
 const active=item=>item&&!item.deletedAt&&item.day;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -22,8 +24,9 @@ const key=(y,m)=>`${y}-${pad(m)}`;
 function addMonth(y,m,delta=1){m+=delta;while(m>12){m-=12;y++}while(m<1){m+=12;y--}return[y,m]}
 function groupByDay(items){const map=new Map();items.forEach(item=>{if(!map.has(item.day))map.set(item.day,[]);map.get(item.day).push(item)});return map}
 async function fetchJsonNotes(url){
- const res=await fetch(url,{cache:'no-store'});
- if(res.status===401){location.replace('/?next='+encodeURIComponent(location.pathname+location.search));throw new Error('unauthorized')}
+ const path=url.replace(/^\/api/,'');
+ const res=await apiFetch(path,{cache:'no-store'});
+ if(res.status===401){redirectToLogin();throw new Error('unauthorized')}
  if(!res.ok)throw new Error(`notes_${res.status}`);
  return res.json();
 }
@@ -45,10 +48,11 @@ async function fetchMonth(y,m){
  if(monthCache.has(monthKey))return monthCache.get(monthKey);
  const data=await fetchJsonNotes(`/api/v1/notes?month=${encodeURIComponent(monthKey)}`);
  const items=(Array.isArray(data.items)?data.items:[]).filter(active).sort((a,b)=>(a.ts||0)-(b.ts||0));
+ for(const [path,url] of hydrateSignedUrls(items))signedUrlByPath.set(path,url);
  monthCache.set(monthKey,items);
  return items;
 }
-function lazyImage(path,alt=''){return `<img loading="lazy" decoding="async" data-src="${assetUrl(path)}" alt="${esc(alt)}">`}
+function lazyImage(path,alt=''){const src=assetUrl(path);return `<img loading="lazy" decoding="async" data-path="${esc(path)}" data-src="${esc(src)}" alt="${esc(alt)}">`}
 function renderCalendar(y,m,items){
  const grouped=groupByDay(items),first=new Date(y,m-1,1).getDay(),count=new Date(y,m,0).getDate(),name=monthNames[m-1];let days='';
  for(let i=0;i<first;i++)days+='<span class="day"></span>';
@@ -102,7 +106,7 @@ function ensureObservers(){
  if(!imageObserver)imageObserver=new IntersectionObserver(entries=>entries.forEach(entry=>{
   if(!entry.isIntersecting)return;
   imageObserver.unobserve(entry.target);
-  const src=entry.target.dataset.src;
+  const src=entry.target.dataset.src||assetUrl(entry.target.dataset.path);
   if(src&&!entry.target.src)entry.target.src=src;
  }),{rootMargin:'420px 0px'});
  if(!exifObserver)exifObserver=new IntersectionObserver(entries=>entries.forEach(async entry=>{
@@ -110,6 +114,7 @@ function ensureObservers(){
   exifObserver.unobserve(entry.target);
   if(entry.target.dataset.skipExif==='true')return;
   const cap=entry.target.querySelector('.photo-time');
+  if(isCloudBase)return;
   const result=await captureTime(entry.target.dataset.path,cap?.dataset.fallback||'');
   if(cap){cap.textContent=result.label;cap.dataset.source=result.source}
  }),{rootMargin:'320px 0px'});
