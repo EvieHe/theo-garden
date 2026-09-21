@@ -126,23 +126,24 @@ function mimeTypeForPath(path) {
 }
 
 async function ensureGardenMediaObject(env, originalPath) {
-  const probe = await cloudBaseStorageRequest(env, originalPath, { range: 'bytes=0-0' });
-  if (probe.ok) return { uploaded: false };
-  if (probe.status !== 404) throw new Error(`garden_storage_probe_${probe.status}`);
-
+  // The PG Storage gateway can occasionally surface transient 5xx / TLS edge
+  // errors when called from another edge runtime. Do not make a separate probe
+  // request: uploading to the same private object path is idempotent and avoids
+  // doubling the number of storage round-trips.
   const enc = originalPath.split('/').map(encodeURIComponent).join('/');
   const source = await ghRequest(env, `/repos/EvieHe/theo-notes/contents/${enc}?ref=main`, { accept: 'application/vnd.github.raw' });
   if (!source.ok) throw new Error(`github_media_${source.status}`);
   const bytes = await source.arrayBuffer();
-  const upload = await cloudBaseStorageRequest(env, originalPath, {
-    method: 'POST',
-    // GitHub's raw endpoint often reports application/octet-stream. The
-    // CloudBase bucket intentionally allowlists image MIME types, so derive
-    // the type from the original filename instead of trusting upstream.
-    contentType: mimeTypeForPath(originalPath),
-    body: bytes
-  });
-  if (!upload.ok) {
+
+  let lastDetail = '';
+  for (let attempt = 1; attempt <= 6; attempt += 1) {
+    const upload = await cloudBaseStorageRequest(env, originalPath, {
+      method: 'POST',
+      contentType: mimeTypeForPath(originalPath),
+      body: bytes
+    });
+    if (upload.ok) return { uploaded: true };
+
     const raw = await upload.text();
     let detail = raw.slice(0, 500);
     try {
@@ -152,9 +153,15 @@ async function ensureGardenMediaObject(env, originalPath) {
         message: parsed?.message || parsed?.error?.message || null
       });
     } catch {}
+    lastDetail = detail;
+
+    if ([502, 503, 504, 520, 521, 522, 523, 524, 525, 526].includes(upload.status)) {
+      await new Promise(resolve => setTimeout(resolve, Math.min(12000, attempt * 1800)));
+      continue;
+    }
     throw new Error(`garden_storage_upload_${upload.status}:${detail}`);
   }
-  return { uploaded: true };
+  throw new Error(`garden_storage_upload_retries_exhausted:${lastDetail}`);
 }
 
 async function migrateGardenToCloudBase(env) {
