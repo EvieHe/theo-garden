@@ -38,7 +38,7 @@ async function ensureCatalog(){
 }
 async function fetchDay(day){
  if(dayCache.has(day))return dayCache.get(day);
- const data=await fetchJsonNotes(`/api/v1/notes?index=${encodeURIComponent(day)}`);
+ const data=await fetchJsonNotes(`/api/notes?index=${encodeURIComponent(day)}`);
  const items=(Array.isArray(data.items)?data.items:[]).filter(active).map(item=>({...item,day:item.day||day})).sort((a,b)=>(a.ts||0)-(b.ts||0));
  dayCache.set(day,items);
  return items;
@@ -46,7 +46,7 @@ async function fetchDay(day){
 async function fetchMonth(y,m){
  const monthKey=key(y,m);
  if(monthCache.has(monthKey))return monthCache.get(monthKey);
- const data=await fetchJsonNotes(`/api/v1/notes?month=${encodeURIComponent(monthKey)}`);
+ const data=await fetchJsonNotes(`/api/notes?month=${encodeURIComponent(monthKey)}`);
  const items=(Array.isArray(data.items)?data.items:[]).filter(active).sort((a,b)=>(a.ts||0)-(b.ts||0));
  for(const [path,url] of hydrateSignedUrls(items))signedUrlByPath.set(path,url);
  monthCache.set(monthKey,items);
