@@ -1,4 +1,5 @@
 import { getSession, getNotes, getDateIdeas } from './api.js';
+import {redirectToLogin} from './runtime.js';
 
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $=id=>document.getElementById(id);
@@ -27,7 +28,7 @@ function bindSceneMotion(){
 function activeNotes(notes){return notes.filter(note=>note&&note.day&&!note.deletedAt)}
 async function bootstrap(){
   const session=await getSession();
-  if(!session?.ok){location.replace('/?next='+encodeURIComponent(location.pathname+location.search+location.hash));return}
+  if(!session?.ok){redirectToLogin();return}
   loadSceneImage().catch(err=>console.warn('scene image failed',err));
   bindSceneMotion();
   const [notesResult,ideasResult]=await Promise.allSettled([getNotes(),getDateIdeas()]);
