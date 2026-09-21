@@ -158,7 +158,7 @@ async function ensureGardenMediaObject(env, originalPath) {
     if (upload.status === 409 && /STORAGE_KEY_ALREADY_EXISTS/.test(raw)) {
       return { uploaded: false };
     }
-    if ([502, 503, 504, 520, 521, 522, 523, 524, 525, 526].includes(upload.status)) {
+    if (/STORAGE_ABORTED/.test(raw) || [502, 503, 504, 520, 521, 522, 523, 524, 525, 526].includes(upload.status)) {
       await new Promise(resolve => setTimeout(resolve, Math.min(12000, attempt * 1800)));
       continue;
     }
@@ -213,9 +213,9 @@ async function migrateGardenToCloudBase(env) {
 
   let uploaded = 0;
   let reused = 0;
-  for (let i = 0; i < tasks.length; i += 4) {
+  for (let i = 0; i < tasks.length; i += 2) {
     const results = await Promise.all(
-      tasks.slice(i, i + 4).map(task => ensureGardenMediaObject(env, task.originalPath))
+      tasks.slice(i, i + 2).map(task => ensureGardenMediaObject(env, task.originalPath))
     );
     for (const result of results) {
       if (result.uploaded) uploaded += 1;
