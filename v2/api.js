@@ -7,7 +7,7 @@ export async function getSession() {
 }
 
 export async function getNotes(query='') {
-  const res = await apiFetch('/v1/notes'+query);
+  const res = await apiFetch('/notes'+query);
   if (res.status === 401) { redirectToLogin(); throw new Error('unauthorized'); }
   if (!res.ok) throw new Error(`notes:${res.status}`);
   const data = await res.json();
@@ -15,7 +15,7 @@ export async function getNotes(query='') {
 }
 
 export async function getDateIdeas() {
-  const res = await apiFetch('/v1/date-ideas');
+  const res = await apiFetch('/date-ideas');
   if (res.status === 401) { redirectToLogin(); throw new Error('unauthorized'); }
   if (!res.ok) throw new Error(`date-ideas:${res.status}`);
   const data = await res.json();
