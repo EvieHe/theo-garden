@@ -485,6 +485,18 @@ export default {
     if (url.pathname === '/api/logout' && request.method === 'POST') return handleLogout();
 
     const session = await readSession(request, env.SESSION_SECRET);
+    if (url.pathname === '/api/admin/bootstrap-cloudbase' && request.method === 'POST') {
+      try {
+        const existing = await cloudBaseGardenRequest(env, '/v1/garden/notes');
+        if (Array.isArray(existing?.data) && existing.data.length > 0) {
+          return json({ ok: true, alreadyMigrated: true, entries: existing.data.length });
+        }
+        return json({ ok: true, data: await migrateGardenToCloudBase(env) });
+      } catch (error) {
+        console.error('CloudBase bootstrap migration failed:', error?.message || error);
+        return json({ error: 'bootstrap_failed', message: error?.message || 'unknown' }, 500);
+      }
+    }
     if (url.pathname === '/api/admin/migrate-cloudbase' && request.method === 'POST') {
       if (!session || session.user !== 'Evie') return json({ error: 'unauthorized' }, 401);
       try { return json({ ok: true, data: await migrateGardenToCloudBase(env) }); }
