@@ -516,8 +516,12 @@ export default {
     if (url.pathname === '/api/admin/bootstrap-cloudbase' && request.method === 'POST') {
       try {
         const existing = await cloudBaseGardenRequest(env, '/v1/garden/notes');
-        if (Array.isArray(existing?.data) && existing.data.length > 0) {
-          return json({ ok: true, alreadyMigrated: true, entries: existing.data.length });
+        const existingEntries = Array.isArray(existing?.data) ? existing.data.length : 0;
+        const existingMedia = Array.isArray(existing?.data)
+          ? existing.data.reduce((sum, item) => sum + (Array.isArray(item.images) ? item.images.length : 0), 0)
+          : 0;
+        if (existingEntries >= 24 && existingMedia >= 19) {
+          return json({ ok: true, alreadyMigrated: true, entries: existingEntries, media: existingMedia });
         }
         return json({ ok: true, data: await migrateGardenToCloudBase(env) });
       } catch (error) {
