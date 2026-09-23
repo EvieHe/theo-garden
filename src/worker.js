@@ -126,45 +126,43 @@ function mimeTypeForPath(path) {
 }
 
 async function ensureGardenMediaObject(env, originalPath) {
-  // The PG Storage gateway can occasionally surface transient 5xx / TLS edge
-  // errors when called from another edge runtime. Do not make a separate probe
-  // request: uploading to the same private object path is idempotent and avoids
-  // doubling the number of storage round-trips.
+  const exists = await cloudBaseGardenRequest(env, '/v1/garden/media/exists', {
+    method: 'POST',
+    body: { storagePath: originalPath }
+  });
+  if (exists?.data?.exists) return { uploaded: false };
+
   const enc = originalPath.split('/').map(encodeURIComponent).join('/');
   const source = await ghRequest(env, `/repos/EvieHe/theo-notes/contents/${enc}?ref=main`, { accept: 'application/vnd.github.raw' });
   if (!source.ok) throw new Error(`github_media_${source.status}`);
   const bytes = await source.arrayBuffer();
 
-  let lastDetail = '';
-  for (let attempt = 1; attempt <= 6; attempt += 1) {
-    const upload = await cloudBaseStorageRequest(env, originalPath, {
+  const url = `https://${cloudBaseEnvId(env)}.service.tcloudbase.com/moments/v1/garden/media/upload?path=${encodeURIComponent(originalPath)}`;
+  let response;
+  try {
+    response = await fetch(url, {
       method: 'POST',
-      contentType: mimeTypeForPath(originalPath),
+      headers: {
+        'x-garden-service-key': env.CLOUDBASE_API_KEY,
+        'content-type': mimeTypeForPath(originalPath)
+      },
       body: bytes
     });
-    if (upload.ok) return { uploaded: true };
-
-    const raw = await upload.text();
-    let detail = raw.slice(0, 500);
-    try {
-      const parsed = JSON.parse(raw);
-      detail = JSON.stringify({
-        code: parsed?.code || parsed?.error?.code || null,
-        message: parsed?.message || parsed?.error?.message || null
-      });
-    } catch {}
-    lastDetail = detail;
-
-    if (upload.status === 409 && /STORAGE_KEY_ALREADY_EXISTS/.test(raw)) {
-      return { uploaded: false };
-    }
-    if (/STORAGE_ABORTED/.test(raw) || [502, 503, 504, 520, 521, 522, 523, 524, 525, 526].includes(upload.status)) {
-      await new Promise(resolve => setTimeout(resolve, Math.min(12000, attempt * 1800)));
-      continue;
-    }
-    throw new Error(`garden_storage_upload_${upload.status}:${detail}`);
+  } catch (error) {
+    console.error('Garden media proxy upload failed:', error);
+    throw new Error('garden_media_proxy_unavailable');
   }
-  throw new Error(`garden_storage_upload_retries_exhausted:${lastDetail}`);
+
+  const text = await response.text();
+  let payload = null;
+  try { payload = text ? JSON.parse(text) : null; } catch { payload = { message: text }; }
+  if (!response.ok) {
+    throw new Error(`garden_media_proxy_${response.status}:${JSON.stringify({
+      code: payload?.code || payload?.error?.code || null,
+      message: payload?.message || payload?.error?.message || null
+    })}`);
+  }
+  return { uploaded: Boolean(payload?.data?.uploaded) };
 }
 
 async function migrateGardenToCloudBase(env) {
