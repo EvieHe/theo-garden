@@ -40,5 +40,11 @@ async function bootstrap(){
   $('ideaCount').textContent=String(ideas.length);
   const latest=notes[0];
   if(latest){$('recentDate').textContent=latest.day.replaceAll('-',' · ');$('recentText').textContent=String(latest.text||'这一天留下了一点东西。').trim()||'这一天留下了一点东西。'}
+  const latestWithPhoto=notes.find(note=>Array.isArray(note.imageMeta)&&note.imageMeta.some(media=>media?.url));
+  const latestPhoto=latestWithPhoto?.imageMeta?.find(media=>media?.url);
+  if(latestPhoto?.url){
+    $('recentPhoto').src=latestPhoto.url;
+    $('recentPhotoWrap').hidden=false;
+  }
 }
 bootstrap().catch(err=>{console.error(err);$('recentText').textContent='The garden is resting for a moment.'});
