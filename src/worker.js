@@ -516,14 +516,9 @@ export default {
     const session = await readSession(request, env.SESSION_SECRET);
     if (url.pathname === '/api/admin/bootstrap-cloudbase' && request.method === 'POST') {
       try {
-        const existing = await cloudBaseGardenRequest(env, '/v1/garden/notes');
-        const existingEntries = Array.isArray(existing?.data) ? existing.data.length : 0;
-        const existingMedia = Array.isArray(existing?.data)
-          ? existing.data.reduce((sum, item) => sum + (Array.isArray(item.images) ? item.images.length : 0), 0)
-          : 0;
-        if (existingEntries >= 24 && existingMedia >= 19) {
-          return json({ ok: true, alreadyMigrated: true, entries: existingEntries, media: existingMedia });
-        }
+        // Always run the idempotent migration. ensureGardenMediaObject checks
+        // CloudBase first, so already-migrated objects are skipped and only
+        // genuinely missing originals are transferred.
         return json({ ok: true, data: await migrateGardenToCloudBase(env) });
       } catch (error) {
         console.error('CloudBase bootstrap migration failed:', error?.message || error);
