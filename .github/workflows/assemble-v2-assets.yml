@@ -30,9 +30,9 @@ jobs:
             exit 0
           fi
 
-          base64 --decode v2/assets/_import/hero-main.webp.b64 > v2/assets/hero-main.webp
-          base64 --decode v2/assets/_import/hero-secondary.webp.b64 > v2/assets/hero-secondary.webp
-          base64 --decode v2/assets/_import/hero-visual-reference.webp.b64 > v2/assets/hero-visual-reference.webp
+          cat v2/assets/_import/hero-main.part*.b64 | base64 --decode > v2/assets/hero-main.webp
+          cat v2/assets/_import/hero-secondary.part*.b64 | base64 --decode > v2/assets/hero-secondary.webp
+          cat v2/assets/_import/hero-visual-reference.part*.b64 | base64 --decode > v2/assets/hero-visual-reference.webp
 
           test "$(wc -c < v2/assets/hero-main.webp)" -gt 200000
           test "$(wc -c < v2/assets/hero-secondary.webp)" -gt 200000
