@@ -53,7 +53,11 @@ async function fetchMonth(y,m){
  monthCache.set(monthKey,items);
  return items;
 }
-function lazyImage(path,alt='',preview=false){const src=preview?calendarThumbUrl(path):assetUrl(path);return `<img loading="lazy" decoding="async" data-path="${esc(path)}" data-src="${esc(src)}" alt="${esc(alt)}">`}
+function lazyImage(path,alt='',preview=false){
+ const src=preview?calendarThumbUrl(path):assetUrl(path);
+ if(preview)return `<img loading="eager" decoding="async" data-path="${esc(path)}" src="${esc(src)}" alt="${esc(alt)}">`;
+ return `<img loading="lazy" decoding="async" data-path="${esc(path)}" data-src="${esc(src)}" alt="${esc(alt)}">`;
+}
 function renderCalendar(y,m,items){
  const grouped=groupByDay(items),first=new Date(y,m-1,1).getDay(),count=new Date(y,m,0).getDate(),name=monthNames[m-1];let days='';
  for(let i=0;i<first;i++)days+='<span class="day"></span>';
