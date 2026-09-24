@@ -359,17 +359,6 @@ async function apiNotes(request, env, session) {
       let result = await cloudBaseGardenRequest(env, `/v1/garden/notes${params.size ? '?' + params.toString() : ''}`);
       let items = Array.isArray(result?.data) ? result.data : [];
 
-      // First authenticated read after cutover performs the one-time, idempotent
-      // GitHub -> CloudBase migration if the Garden read model is still empty.
-      if (items.length === 0) {
-        const all = await cloudBaseGardenRequest(env, '/v1/garden/notes');
-        if (Array.isArray(all?.data) && all.data.length === 0) {
-          await migrateGardenToCloudBase(env);
-          result = await cloudBaseGardenRequest(env, `/v1/garden/notes${params.size ? '?' + params.toString() : ''}`);
-          items = Array.isArray(result?.data) ? result.data : [];
-        }
-      }
-
       return json({ ok: true, items, index: index || undefined, source: 'cloudbase' });
     } catch (error) {
       console.error('CloudBase notes read failed; falling back to GitHub:', error?.message || error);
@@ -500,36 +489,12 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/api/health' && request.method === 'GET') return handleHealth(env);
-    if (url.pathname === '/api/admin/migration-index' && request.method === 'GET') {
-      if (!(await migrationServiceAuthorized(request, env))) return json({ error: 'unauthorized' }, 401);
-      return migrationSourceIndex(env);
-    }
-    if (url.pathname === '/api/admin/migration-object' && request.method === 'GET') {
-      if (!(await migrationServiceAuthorized(request, env))) return json({ error: 'unauthorized' }, 401);
-      return migrationSourceObject(request, env);
-    }
     if (url.pathname === '/api/ready' && request.method === 'GET') return apiReady(env);
     if (url.pathname === '/api/login' && request.method === 'POST') return handleLogin(request, env);
     if (url.pathname === '/api/session' && request.method === 'GET') return handleSession(request, env);
     if (url.pathname === '/api/logout' && request.method === 'POST') return handleLogout();
 
     const session = await readSession(request, env.SESSION_SECRET);
-    if (url.pathname === '/api/admin/bootstrap-cloudbase' && request.method === 'POST') {
-      try {
-        // Always run the idempotent migration. ensureGardenMediaObject checks
-        // CloudBase first, so already-migrated objects are skipped and only
-        // genuinely missing originals are transferred.
-        return json({ ok: true, data: await migrateGardenToCloudBase(env) });
-      } catch (error) {
-        console.error('CloudBase bootstrap migration failed:', error?.message || error);
-        return json({ error: 'bootstrap_failed', message: error?.message || 'unknown' }, 500);
-      }
-    }
-    if (url.pathname === '/api/admin/migrate-cloudbase' && request.method === 'POST') {
-      if (!session || session.user !== 'Evie') return json({ error: 'unauthorized' }, 401);
-      try { return json({ ok: true, data: await migrateGardenToCloudBase(env) }); }
-      catch (error) { console.error('CloudBase migration failed:', error?.message || error); return json({ error: 'migration_failed', message: error?.message || 'unknown' }, 500); }
-    }
     if (url.pathname === '/api/v1/notes' && request.method === 'GET') return apiNotes(request, env, session);
     if (url.pathname === '/api/v1/date-ideas' && request.method === 'GET') return apiDateIdeas(env, session);
     if (url.pathname === '/api/v1/assets' && request.method === 'GET') return apiAsset(request, env, session);
