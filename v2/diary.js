@@ -17,6 +17,7 @@ const monthNames=['January','February','March','April','May','June','July','Augu
 const weekdays=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const signedUrlByPath=new Map();
 const assetUrl=path=>signedUrlByPath.get(path)||(isCloudBase?'':`/api/v1/assets?path=${encodeURIComponent(path)}`);
+const calendarThumbUrl=path=>{const src=assetUrl(path);if(!src||!isCloudBase)return src;return `${src}${src.includes('?')?'&':'?'}imageMogr2/thumbnail/240x240/format/webp/rquality/82`};
 const active=item=>item&&!item.deletedAt&&item.day;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -52,7 +53,7 @@ async function fetchMonth(y,m){
  monthCache.set(monthKey,items);
  return items;
 }
-function lazyImage(path,alt=''){const src=assetUrl(path);return `<img loading="lazy" decoding="async" data-path="${esc(path)}" data-src="${esc(src)}" alt="${esc(alt)}">`}
+function lazyImage(path,alt='',preview=false){const src=preview?calendarThumbUrl(path):assetUrl(path);return `<img loading="lazy" decoding="async" data-path="${esc(path)}" data-src="${esc(src)}" alt="${esc(alt)}">`}
 function renderCalendar(y,m,items){
  const grouped=groupByDay(items),first=new Date(y,m-1,1).getDay(),count=new Date(y,m,0).getDate(),name=monthNames[m-1];let days='';
  for(let i=0;i<first;i++)days+='<span class="day"></span>';
@@ -60,7 +61,7 @@ function renderCalendar(y,m,items){
   const date=`${key(y,m)}-${pad(d)}`,entries=grouped.get(date)||[],images=entries.flatMap(x=>Array.isArray(x.images)?x.images:[]);
   if(entries.length){
    days+=images.length
-    ?`<a class="day has-memory" href="./day.html?date=${date}" aria-label="Open ${name} ${d}">${lazyImage(images[0])}<span class="num">${d}</span></a>`
+    ?`<a class="day has-memory" href="./day.html?date=${date}" aria-label="Open ${name} ${d}">${lazyImage(images[0],'',true)}<span class="num">${d}</span></a>`
     :`<a class="day has-memory text-memory" href="./day.html?date=${date}" aria-label="Open ${name} ${d}"><span class="text-date">${d}</span></a>`;
   }else days+=`<span class="day">${d}</span>`;
  }
