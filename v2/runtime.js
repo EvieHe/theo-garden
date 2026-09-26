@@ -35,6 +35,9 @@ export function redirectToLogin(){
 }
 export function hydrateSignedUrls(items){
   const map=new Map();
-  for(const item of items||[])for(const media of item?.imageMeta||[])if(media?.path&&media?.url)map.set(media.path,media.url);
+  for(const item of items||[])for(const media of item?.imageMeta||[]){
+    if(media?.path&&media?.url)map.set(media.path,media.url);
+    if(media?.motion?.path&&media?.motion?.url)map.set(media.motion.path,media.motion.url);
+  }
   return map;
 }
