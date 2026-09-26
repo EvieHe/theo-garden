@@ -1,4 +1,4 @@
-import { rewriteGitHubPath, isProtectedPath, isSafeTestPath, isValidNotesIndex, isValidDateIdeas } from './core.js';
+import { rewriteGitHubPath, isProtectedPath, isSafeTestPath, isValidNotesIndex, isValidDateIdeas, resolveNotesIndexPath } from './core.js';
 
 const USERS = new Set(['Theo', 'Evie']);
 const SESSION_COOKIE = 'theo_session';
@@ -64,7 +64,7 @@ function handleLogout() {
   return json({ ok: true }, 200, { 'set-cookie': `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0` });
 }
 function handleHealth(env) {
-  return json({ ok: true, configured: { sitePass: Boolean(env.SITE_PASS), sessionSecret: Boolean(env.SESSION_SECRET), githubToken: Boolean(env.GITHUB_TOKEN) } });
+  return json({ ok: true, configured: { sitePass: Boolean(env.SITE_PASS), sessionSecret: Boolean(env.SESSION_SECRET), githubToken: Boolean(env.GITHUB_TOKEN), cloudbase: Boolean(env.CLOUDBASE_API_KEY) } });
 }
 function ghHeaders(env, accept = 'application/vnd.github+json') {
   return { authorization: `Bearer ${env.GITHUB_TOKEN}`, accept, 'x-github-api-version': '2022-11-28', 'user-agent': 'theo-garden-worker' };
@@ -75,6 +75,38 @@ async function ghRequest(env, path, init = {}) {
   if (init.contentType) headers.set('content-type', init.contentType);
   return fetch(`https://api.github.com${path}`, { method: init.method || 'GET', headers, body: init.body, redirect: 'follow' });
 }
+function cloudBaseConfigured(env) {
+  return Boolean(env.CLOUDBASE_API_KEY);
+}
+
+function cloudBaseEnvId(env) {
+  return env.CLOUDBASE_ENV_ID || 'moments1-d0ginpt1r80945f2c';
+}
+
+async function cloudBaseGardenRequest(env, path, init = {}) {
+  if (!cloudBaseConfigured(env)) throw new Error('cloudbase_not_configured');
+  const base = `https://${cloudBaseEnvId(env)}.service.tcloudbase.com/moments`;
+  const headers = new Headers({
+    'x-garden-service-key': env.CLOUDBASE_API_KEY,
+    accept: 'application/json'
+  });
+  if (init.body !== undefined) headers.set('content-type', 'application/json');
+  const res = await fetch(base + path, {
+    method: init.method || 'GET',
+    headers,
+    body: init.body === undefined ? undefined : JSON.stringify(init.body)
+  });
+  const text = await res.text();
+  let payload = null;
+  try { payload = text ? JSON.parse(text) : null; } catch { payload = { message: text }; }
+  if (!res.ok) {
+    const error = new Error(payload?.error?.message || payload?.message || `cloudbase_${res.status}`);
+    error.status = res.status;
+    throw error;
+  }
+  return payload;
+}
+
 async function ghJsonFile(env, repoPath) {
   const enc = repoPath.split('/').map(encodeURIComponent).join('/');
   const res = await ghRequest(env, `/repos/EvieHe/theo-notes/contents/${enc}?ref=main`);
@@ -138,12 +170,37 @@ async function ghDeleteFile(env, repoPath) {
   const path = `/repos/EvieHe/theo-notes/contents/${repoPath.split('/').map(encodeURIComponent).join('/')}`;
   return ghRequest(env, path, { method: 'DELETE', contentType: 'application/json', body: JSON.stringify({ message: `Cleanup smoke test ${repoPath}`, sha: current.sha, branch: 'main' }) });
 }
-async function apiNotes(env, session) {
+async function apiNotes(request, env, session) {
   if (!session) return json({ error: 'unauthorized' }, 401);
-  const result = await ghJsonFile(env, 'notes/index.json');
-  if (!result.ok) return json({ error: 'storage_read_failed', upstreamStatus: result.status }, 502);
-  if (!isValidNotesIndex(result.value)) return json({ error: 'notes_contract_invalid' }, 502);
-  return json({ ok: true, items: result.value.items });
+  const url = new URL(request.url);
+  const index = url.searchParams.get('index');
+  const month = url.searchParams.get('month');
+  if (cloudBaseConfigured(env)) {
+    try {
+      const params = new URLSearchParams();
+      if (index) params.set('day', index);
+      if (month) params.set('month', month);
+      let result = await cloudBaseGardenRequest(env, `/v1/garden/notes${params.size ? '?' + params.toString() : ''}`);
+      let items = Array.isArray(result?.data) ? result.data : [];
+
+      return json({ ok: true, items, index: index || undefined, source: 'cloudbase' });
+    } catch (error) {
+      console.error('CloudBase notes read failed; falling back to GitHub:', error?.message || error);
+    }
+  }
+  const target = resolveNotesIndexPath(index);
+  if (!target) return json({ error: 'invalid_index', expected: 'YYYY-MM-DD' }, 400);
+  const result = await ghJsonFile(env, target.path);
+  if (!result.ok) {
+    if (target.day && result.status === 404) return json({ ok: true, items: [], index: target.day });
+    return json({ error: 'storage_read_failed', upstreamStatus: result.status }, 502);
+  }
+  if (!result.value || typeof result.value !== 'object' || !Array.isArray(result.value.items)) return json({ error: 'notes_contract_invalid' }, 502);
+  const items = target.day
+    ? result.value.items.map(item => ({ ...item, day: item?.day || target.day }))
+    : result.value.items;
+  if (!isValidNotesIndex({ items })) return json({ error: 'notes_contract_invalid' }, 502);
+  return json({ ok: true, items, index: target.day });
 }
 async function apiDateIdeas(env, session) {
   if (!session) return json({ error: 'unauthorized' }, 401);
@@ -156,6 +213,15 @@ async function apiAsset(request, env, session) {
   if (!session) return json({ error: 'unauthorized' }, 401);
   const path = new URL(request.url).searchParams.get('path') || '';
   if (!/^(notes|dates)\/[A-Za-z0-9._/-]+$/.test(path) || path.includes('..')) return json({ error: 'bad_asset_path' }, 400);
+  if (cloudBaseConfigured(env) && path.startsWith('notes/')) {
+    try {
+      const signed = await cloudBaseGardenRequest(env, '/v1/garden/media/sign', { method: 'POST', body: { storagePath: path } });
+      const location = signed?.data?.url;
+      if (location) return Response.redirect(location, 302);
+    } catch (error) {
+      console.error('CloudBase asset signing failed; falling back to GitHub:', error?.message || error);
+    }
+  }
   const enc = path.split('/').map(encodeURIComponent).join('/');
   const res = await ghRequest(env, `/repos/EvieHe/theo-notes/contents/${enc}?ref=main`, { accept: 'application/vnd.github.raw' });
   if (!res.ok) return json({ error: 'asset_read_failed', upstreamStatus: res.status }, 502);
@@ -253,7 +319,7 @@ export default {
     if (url.pathname === '/api/logout' && request.method === 'POST') return handleLogout();
 
     const session = await readSession(request, env.SESSION_SECRET);
-    if (url.pathname === '/api/v1/notes' && request.method === 'GET') return apiNotes(env, session);
+    if (url.pathname === '/api/v1/notes' && request.method === 'GET') return apiNotes(request, env, session);
     if (url.pathname === '/api/v1/date-ideas' && request.method === 'GET') return apiDateIdeas(env, session);
     if (url.pathname === '/api/v1/assets' && request.method === 'GET') return apiAsset(request, env, session);
     if (url.pathname === '/api/v1/test-object') return apiTestObject(request, env, session);
