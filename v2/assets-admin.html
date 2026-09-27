@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#17110e">
+<title>Theo Garden — Visual Assets</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;color:#eadfce;background:#17110e}
+*{box-sizing:border-box}body{margin:0;min-height:100svh;padding:28px;background:radial-gradient(circle at 24% 0,#3a2a23,transparent 34%),#17110e}
+main{width:min(960px,100%);margin:auto}.head{padding:28px 0 24px}h1{font:400 clamp(38px,7vw,72px)/1 Georgia,serif;margin:0}.head p{opacity:.62;line-height:1.7}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.card{border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:18px;background:rgba(255,255,255,.055);backdrop-filter:blur(18px)}
+.preview{aspect-ratio:4/3;border-radius:16px;overflow:hidden;background:rgba(255,255,255,.04);display:grid;place-items:center;color:rgba(255,255,255,.28);font-size:12px}.preview img{width:100%;height:100%;object-fit:cover}
+h2{font:400 24px Georgia,serif;margin:16px 0 5px}.hint{font-size:12px;line-height:1.55;opacity:.58;min-height:38px}
+input{display:block;width:100%;margin:16px 0;font-size:12px;color:inherit}button{width:100%;border:0;border-radius:999px;padding:12px 15px;font-weight:700;background:#eadfce;color:#2a201a}button:disabled{opacity:.4}.status{margin-top:10px;min-height:18px;font-size:12px;opacity:.75}
+.back{display:inline-block;margin-top:26px;color:inherit;opacity:.62;text-decoration:none}
+@media(max-width:760px){body{padding:20px}.grid{grid-template-columns:1fr}.hint{min-height:auto}}
+</style>
+</head>
+<body>
+<main>
+<section class="head"><h1>Garden visuals</h1><p>只用于首页公开视觉素材。照片会在浏览器本地缩放并转成 WebP，再上传到 CloudBase；Diary 私密照片不会经过这里。</p></section>
+<section class="grid" id="grid"></section>
+<a class="back" href="./index.html">← Back home</a>
+</main>
+<script type="module">
+import {apiFetch,redirectToLogin,isCloudBase} from './runtime.js';
+
+const slots=[
+ {name:'hero-main.webp',title:'Main Hero',hint:'首页第一屏。建议选择第一张屋顶场景图。',max:1920},
+ {name:'world-section.webp',title:'Second Scene',hint:'首页第二屏氛围图。建议选择第二张室内场景图。',max:1600},
+ {name:'visual-reference.webp',title:'Visual Reference',hint:'视觉参考图，不直接铺在页面背景。',max:1280}
+];
+
+async function toWebP(file,max){
+ const bitmap=await createImageBitmap(file);
+ const scale=Math.min(1,max/Math.max(bitmap.width,bitmap.height));
+ const w=Math.max(1,Math.round(bitmap.width*scale)),h=Math.max(1,Math.round(bitmap.height*scale));
+ const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+ canvas.getContext('2d',{alpha:false}).drawImage(bitmap,0,0,w,h);
+ bitmap.close?.();
+ return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('WebP encode failed')),'image/webp',.88));
+}
+
+function card(slot){
+ const el=document.createElement('article');el.className='card';
+ el.innerHTML=`<div class="preview">No image selected</div><h2>${slot.title}</h2><div class="hint">${slot.hint}</div><input type="file" accept="image/*"><button disabled>Upload</button><div class="status"></div>`;
+ const input=el.querySelector('input'),button=el.querySelector('button'),preview=el.querySelector('.preview'),status=el.querySelector('.status');
+ let blob=null,url='';
+ input.onchange=async()=>{
+   const file=input.files?.[0];if(!file)return;
+   status.textContent='正在本地优化…';button.disabled=true;
+   try{
+     blob=await toWebP(file,slot.max);
+     if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(blob);
+     preview.innerHTML=`<img alt="">`;preview.querySelector('img').src=url;
+     status.textContent=`${Math.round(blob.size/1024)} KB WebP ready`;button.disabled=false;
+   }catch(e){status.textContent='处理失败：'+e.message}
+ };
+ button.onclick=async()=>{
+   if(!blob)return;button.disabled=true;status.textContent='上传中…';
+   try{
+     const res=await apiFetch('/site-assets?name='+encodeURIComponent(slot.name),{method:'POST',headers:{'content-type':'image/webp'},body:blob});
+     if(res.status===401){redirectToLogin();return}
+     const data=await res.json().catch(()=>({}));
+     if(!res.ok)throw new Error(data?.error?.message||('HTTP '+res.status));
+     status.textContent='✓ 已上传，首页会自动使用这张图';
+   }catch(e){status.textContent='上传失败：'+e.message;button.disabled=false}
+ };
+ return el;
+}
+
+(async()=>{
+ if(!isCloudBase){document.querySelector('.head p').textContent='请从 CloudBase 版本打开这个页面。';return}
+ const session=await apiFetch('/session');
+ if(!session.ok){redirectToLogin();return}
+ const data=await session.json();
+ if(data.user!=='Evie'){document.body.innerHTML='<main><h1>Evie only.</h1></main>';return}
+ const grid=document.querySelector('#grid');slots.forEach(slot=>grid.append(card(slot)));
+})().catch(err=>{console.error(err);document.querySelector('.head p').textContent='页面暂时不可用：'+err.message});
+</script>
+</body>
+</html>

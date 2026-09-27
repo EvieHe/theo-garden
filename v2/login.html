@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#17110e">
+<title>Theo Garden — Login</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;color:#f1e5d5;background:#17110e}
+*{box-sizing:border-box}body{margin:0;min-height:100svh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 30% 15%,#3b2d26 0,transparent 38%),linear-gradient(160deg,#17110e,#261b16 62%,#17110e)}
+.card{width:min(440px,100%);padding:34px;border:1px solid rgba(241,229,213,.18);border-radius:28px;background:rgba(31,22,18,.72);backdrop-filter:blur(18px);box-shadow:0 28px 80px rgba(0,0,0,.34)}
+h1{font-family:Georgia,serif;font-weight:400;font-size:42px;margin:0 0 8px}.sub{opacity:.68;margin:0 0 28px}
+label{display:block;font-size:12px;letter-spacing:.08em;margin:16px 0 7px;opacity:.72}
+select,input{width:100%;border-radius:14px;border:1px solid rgba(241,229,213,.18);background:rgba(255,255,255,.06);color:#f1e5d5;padding:13px 14px;font-size:16px;outline:none}
+option{color:#17110e}button{width:100%;margin-top:22px;border:0;border-radius:999px;padding:13px 18px;background:#eadfce;color:#281f1a;font-weight:700;font-size:15px;cursor:pointer}
+button:disabled{opacity:.55}.err{display:none;color:#f1aaa0;font-size:13px;margin-top:12px}
+</style>
+</head>
+<body>
+<main class="card">
+<h1>THEO GARDEN</h1><p class="sub">Same weirdos, different worlds ♡</p>
+<label>账号</label><select id="user"><option>Theo</option><option>Evie</option></select>
+<label>口令</label><input id="pass" type="password" inputmode="numeric" autocomplete="current-password" placeholder="4 位数">
+<div id="err" class="err">用户名或口令不对哦～</div><button id="go">Enter Our Garden</button>
+</main>
+<script type="module">
+import {apiFetch,isCloudBase,sessionToken} from './runtime.js';
+const $=id=>document.getElementById(id),err=$('err'),btn=$('go');
+function nextUrl(){const p=new URLSearchParams(location.search),next=p.get('next');return next&&next.startsWith('/')&&!next.startsWith('//')?next:'./index.html'}
+async function restore(){if(!isCloudBase)return;if(!sessionToken())return;const r=await apiFetch('/session');if(r.ok)location.replace(nextUrl())}
+async function submit(){err.style.display='none';btn.disabled=true;try{const r=await apiFetch('/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({user:$('user').value,pass:$('pass').value.trim()})});if(!r.ok){err.style.display='block';return}const d=await r.json();localStorage.setItem('garden_session_token',d.token);localStorage.setItem('garden_session_user',d.user);location.replace(nextUrl())}catch{err.textContent='暂时连不上秘密基地，请稍后再试～';err.style.display='block'}finally{btn.disabled=false}}
+btn.onclick=submit;$('pass').addEventListener('keydown',e=>{if(e.key==='Enter')submit()});restore();
+</script>
+</body></html>
