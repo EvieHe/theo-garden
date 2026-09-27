@@ -1,6 +1,7 @@
 import {apiFetch,redirectToLogin,isCloudBase} from './runtime.js';
 
 const picker=document.querySelector('#picker');
+const livePicker=document.querySelector('#livePicker');
 const daysEl=document.querySelector('#days');
 const summaryEl=document.querySelector('#summary');
 const uploadAll=document.querySelector('#uploadAll');
@@ -243,9 +244,13 @@ async function runPool(items,limit,worker){
  await Promise.all(runners);
 }
 
-picker.addEventListener('change',()=>inspect([...picker.files]).catch(error=>{
- console.error(error);overall.textContent='识别失败：'+error.message;
-}));
+function inspectPicked(files){
+ return inspect(files).catch(error=>{
+  console.error(error);overall.textContent='识别失败：'+error.message;
+ });
+}
+picker.addEventListener('change',()=>inspectPicked([...picker.files]));
+livePicker?.addEventListener('change',()=>inspectPicked([...livePicker.files]));
 
 uploadAll.addEventListener('click',async()=>{
  const queue=assets.filter(x=>x.state==='ready'||x.state==='error');
