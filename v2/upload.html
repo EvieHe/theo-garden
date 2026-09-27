@@ -28,12 +28,20 @@ h1{font:400 clamp(42px,10vw,78px)/.96 Georgia,serif;margin:10px 0 16px}.lead{max
 <main>
 <p class="eyebrow">QUICK UPLOAD</p>
 <h1>把相册倒进花园。</h1>
-<p class="lead">可以一次多选。会优先读取照片自己的拍摄时间并自动按日期归档；Live Photo 如果浏览器拿到了静态图和配对 MOV，会作为一个完整实况保存。</p>
+<p class="lead">普通照片可以直接从相册一次多选，自动读取拍摄时间并按日期归档。完整 Live Photo 需要同时拿到静态原图和配对 MOV；网页相册选择器拿不到 MOV 时，会明确按静态照片保存。</p>
 <section class="picker">
-  <label class="pick-btn">＋ 选择照片 / 实况
-    <input id="picker" type="file" multiple accept="image/*,video/quicktime,video/mp4,.heic,.heif,.mov">
+  <p class="eyebrow" style="margin-top:0">FROM PHOTOS</p>
+  <label class="pick-btn">＋ 从相册批量选择
+    <input id="picker" type="file" multiple accept="image/*">
   </label>
-  <p class="picker-note">iPhone 提示：如果系统照片选择器只交给网页静态封面，页面会明确标成普通照片；要完整保留实况，可从“文件”里同时选择同名的 HEIC/JPG + MOV 原件。</p>
+  <p class="picker-note">适合普通照片：多选后自动读取拍摄时间并按日期归档。iPhone 网页选择器目前只会把 Live Photo 的静态部分交给网页，因此这里选到的实况会明确按静态照片保存。</p>
+</section>
+<section class="picker" style="margin-top:14px">
+  <p class="eyebrow" style="margin-top:0">LIVE PHOTO ORIGINALS</p>
+  <label class="pick-btn">＋ 导入实况原件
+    <input id="livePicker" type="file" multiple accept=".heic,.heif,.jpg,.jpeg,.mov,.mp4,image/heic,image/heif,image/jpeg,video/quicktime,video/mp4">
+  </label>
+  <p class="picker-note">只有同时拿到同名的 HEIC/JPG + MOV，Theo Garden 才会把它识别为完整 Live Photo。这个入口不会把缺失 MOV 的照片假装成实况。</p>
 </section>
 <div class="summary" id="summary"></div>
 <section class="days" id="days"><p class="empty">还没有选择照片。</p></section>
